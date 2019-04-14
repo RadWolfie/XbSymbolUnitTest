@@ -10,11 +10,11 @@
 #include <iomanip>
 #include <iostream>
 #include <iterator>
+#include <map>
 #include <sstream>
 #include <stdlib.h>
 #include <string>
 
-#include "SimpleIni.h"
 #include "XbSymbolDatabase.h"
 #include "Xbe.h"
 #include "helper.hpp"
@@ -23,23 +23,6 @@
 #define _128_MiB 0x08000000
 
 std::map<std::string, uint32_t> g_SymbolAddresses;
-static const char *section_info = "Info";
-static struct {
-	const char *SymbolDatabaseVersionHash = "SymbolDatabaseVersionHash";
-} sect_info_keys;
-
-static const char *section_certificate = "Certificate";
-static struct {
-	const char *Name = "Name";
-	const char *TitleID = "TitleID";
-	const char *TitleIDHex = "TitleIDHex";
-	const char *Region = "Region";
-} sect_certificate_keys;
-
-static const char *section_libs = "Libs";
-static struct {
-	const char *BuildVersion = "BuildVersion";
-} sect_libs_keys;
 
 static const char *section_symbols = "Symbols";
 
@@ -72,78 +55,20 @@ int invalid_arugment(int argc, char **argv)
 
 extern void ScanXbe(const xbe_header *pXbeHeader, bool is_raw);
 
-int main(int argc, char **argv)
+unsigned int run_test_raw(const xbe_header *pXbeHeader)
 {
-	std::string path_xbe;
-	std::string path_output;
-	static const std::string arg_out = "--out";
-	if (argc > 4) {
-		return invalid_arugment(argc, argv);
-	}
-
-	// Verify if --out parameter exists
-	if (argc > 2) {
-		// > ... --out [output to specific folder] default.xbe
-		if (std::strcmp(argv[1], arg_out.c_str()) == 0) {
-			if (argc != 4) {
-				return invalid_arugment(argc, argv);
-			}
-			path_output = argv[2];
-			path_xbe = argv[3];
-		}
-		// > ... default.xbe --out [output to specific folder]
-		else if (std::strcmp(argv[2], arg_out.c_str()) == 0) {
-			if (argc != 4) {
-				return invalid_arugment(argc, argv);
-			}
-			path_xbe = argv[1];
-			path_output = argv[3];
-		}
-		else {
-			return invalid_arugment(argc, argv);
-		}
-	}
-	// Since extra parameter doesn't exist, then cwd is left alone.
-	else {
-		path_xbe = argv[1];
-	}
-
-	std::setlocale(LC_ALL, "English");
-
-	std::ifstream xbeFile = std::ifstream(path_xbe, std::ios::binary);
-	if (!xbeFile.is_open()) {
-		std::cout << "ERROR: Unable to open the file!\n";
-		pause_for_user_input();
-		return 2;
-	}
-
-	// Check if output is set, verify path, then set output path.
-	if (!path_output.empty()) {
-		if (!std::filesystem::exists(path_output)) {
-			std::cout << "ERROR: Output path does not exist!\n";
-			pause_for_user_input();
-			return 2;
-		}
-		std::filesystem::current_path(path_output);
-	}
-
-	std::string fileData = std::string(std::istreambuf_iterator<char>(xbeFile),
-	                                   std::istreambuf_iterator<char>());
-	std::cout << "File size: " << fileData.size() << " byte(s).\n";
-
 	std::cout << "Scanning raw xbe file...\n";
 
-	const uint8_t *xbe_data =
-	    reinterpret_cast<const uint8_t *>(fileData.data());
-
-	const xbe_header *pXbeHeader =
-	    reinterpret_cast<const xbe_header *>(xbe_data);
 	ScanXbe(pXbeHeader, true);
-
-	std::map<std::string, uint32_t> g_SymbolAddressesRaw = g_SymbolAddresses;
 
 	std::cout << "Scanning raw xbe file... COMPLETE!\n";
 
+	return 0;
+}
+
+unsigned int run_test_virtual(const xbe_header *pXbeHeader,
+                              const uint8_t *xbe_data)
+{
 	void *xb_environment = std::calloc(_128_MiB, 1);
 
 	const uint8_t *xb_env_data =
@@ -221,7 +146,61 @@ int main(int argc, char **argv)
 
 	std::free(xb_environment);
 
-	std::cout << "Scanning virtual xbox environment... COMPLETE!\n\n";
+	std::cout << "Scanning virtual xbox environment... COMPLETE!\n";
+
+	return 0;
+}
+
+int main(int argc, char **argv)
+{
+	std::string path_xbe;
+	if (argc > 2) {
+		return invalid_arugment(argc, argv);
+	}
+
+	// Since extra parameter doesn't exist, then cwd is left alone.
+	if (argc == 2) {
+		path_xbe = argv[1];
+	}
+
+	std::setlocale(LC_ALL, "English");
+
+	std::ifstream xbeFile = std::ifstream(path_xbe, std::ios::binary);
+	if (!xbeFile.is_open()) {
+		std::cout << "ERROR: Unable to open the file!\n";
+		pause_for_user_input();
+		return 2;
+	}
+
+	std::string fileData = std::string(std::istreambuf_iterator<char>(xbeFile),
+	                                   std::istreambuf_iterator<char>());
+	std::cout << "File size: " << fileData.size() << " byte(s).\n";
+
+	const uint8_t *xbe_data =
+	    reinterpret_cast<const uint8_t *>(fileData.data());
+
+	const xbe_header *pXbeHeader =
+	    reinterpret_cast<const xbe_header *>(xbe_data);
+
+	unsigned int test_ret = run_test_raw(pXbeHeader);
+	if (test_ret != 0) {
+		std::cout << "ERROR: Raw test failed!\n";
+		pause_for_user_input();
+		return test_ret;
+	}
+
+	std::cout << "\n";
+
+	std::map<std::string, uint32_t> g_SymbolAddressesRaw = g_SymbolAddresses;
+
+	test_ret = run_test_virtual(pXbeHeader, xbe_data);
+	if (test_ret != 0) {
+		std::cout << "ERROR: Virtual test failed!\n";
+		pause_for_user_input();
+		return test_ret;
+	}
+
+	std::cout << "\n";
 
 	std::cout << "Verifying symbols registered...\n";
 
@@ -248,7 +227,7 @@ int main(int argc, char **argv)
 	if (!std::equal(g_SymbolAddresses.begin(), g_SymbolAddresses.end(),
 	                g_SymbolAddressesRaw.begin())) {
 		std::cout
-		    << "ERROR: Symbol registered does not match of raw vs sim xbox\n";
+		    << "ERROR: Symbol registered does not match raw vs virtual xbox\n";
 		pause_for_user_input();
 		return 6;
 	}
@@ -259,7 +238,7 @@ int main(int argc, char **argv)
 #if 0
 	pause_for_user_input();
 #else
-	std::cout << "INFO: Scanning xbe file is completed\n";
+	std::cout << "INFO: Scanning xbe file is completed.\n";
 #endif
 
 	return 0;
@@ -347,30 +326,38 @@ void ScanXbe(const xbe_header *pXbeHeader, bool is_raw)
 	uint16_t xdkVersion = 0;
 	uint32_t XbLibScan = 0;
 	uint16_t buildVersion = 0;
+	char tAsciiTitle[40] = "Unknown";
+	std::wcstombs(tAsciiTitle, pCertificate->wszTitleName, sizeof(tAsciiTitle));
 
-	// Make sure the Symbol Cache directory exists
-	std::string cachePath = "SymbolCache/";
-	if (!std::filesystem::exists(cachePath) &&
-	    !std::filesystem::create_directory(cachePath)) {
-		EmuOutputMessage(XB_OUTPUT_MESSAGE_ERROR,
-		                 "Couldn't create SymbolCache folder!");
-	}
+	// Output Symbol Database version
+	std::cout << "XbSymbolLibraryVersion: " << XbSymbolLibraryVersion() << "\n";
+
+	// Store Certificate Details
+	std::cout << "Name                  : " << tAsciiTitle << "\n";
+	std::cout << "TitleID               : "
+	          << FormatTitleId(pCertificate->dwTitleId) << "\n";
+	std::cout << "Region                : " << pCertificate->dwGameRegion
+	          << "\n";
 
 	// Hash the loaded XBE's header, use it as a filename
 	uint32_t uiHash = XXH32((void *)pXbeHeader, sizeof(xbe_header), 0);
-	std::stringstream sstream;
-	char tAsciiTitle[40] = "Unknown";
-	std::mbstate_t state = std::mbstate_t();
-	std::wcstombs(tAsciiTitle, pCertificate->wszTitleName, sizeof(tAsciiTitle));
-	std::string szTitleName(tAsciiTitle);
-	PurgeBadChar(szTitleName);
-	sstream << cachePath << szTitleName << "-" << std::hex << uiHash << " ("
-	        << (is_raw ? "raw" : "sim") << ")"
-	        << ".ini";
-	std::string filename = sstream.str();
-	bool scan_ret;
+	std::cout << "Xbe header hash       : " << XbSymbolLibraryVersion() << "\n";
 
-	CSimpleIniA symbolCacheData;
+	// Store Library Details
+	for (uint32_t i = 0; i < pXbeHeader->dwLibraryVersions; i++) {
+		std::string LibraryName(pLibraryVersion[i].szName,
+		                        pLibraryVersion[i].szName + 8);
+		std::cout << "LibraryName[" << i << "]        : " << LibraryName
+		          << "\n";
+
+		if (buildVersion < pLibraryVersion[i].wBuildVersion) {
+			buildVersion = pLibraryVersion[i].wBuildVersion;
+		}
+	}
+
+	std::cout << "BuildVersion          : " << buildVersion << "\n";
+
+	bool scan_ret;
 
 	//
 	// initialize Microsoft XDK scanning
@@ -397,51 +384,4 @@ void ScanXbe(const xbe_header *pXbeHeader, bool is_raw)
 	}
 
 	std::cout << "\n";
-
-	// Perform a reset just in case a cached file data still exist.
-	symbolCacheData.Reset();
-
-	// Store Symbol Database version
-	symbolCacheData.SetLongValue(
-	    section_info, sect_info_keys.SymbolDatabaseVersionHash,
-	    XbSymbolLibraryVersion(), nullptr, /*UseHex =*/false);
-
-	// Store Certificate Details
-	symbolCacheData.SetValue(section_certificate, sect_certificate_keys.Name,
-	                         tAsciiTitle);
-	symbolCacheData.SetValue(section_certificate, sect_certificate_keys.TitleID,
-	                         FormatTitleId(pCertificate->dwTitleId).c_str());
-	symbolCacheData.SetLongValue(
-	    section_certificate, sect_certificate_keys.TitleIDHex,
-	    pCertificate->dwTitleId, nullptr, /*UseHex =*/true);
-	symbolCacheData.SetLongValue(
-	    section_certificate, sect_certificate_keys.Region,
-	    pCertificate->dwGameRegion, nullptr, /*UseHex =*/true);
-
-	// Store Library Details
-	for (uint32_t i = 0; i < pXbeHeader->dwLibraryVersions; i++) {
-		std::string LibraryName(pLibraryVersion[i].szName,
-		                        pLibraryVersion[i].szName + 8);
-		symbolCacheData.SetLongValue(section_libs, LibraryName.c_str(),
-		                             pLibraryVersion[i].wBuildVersion, nullptr,
-		                             /*UseHex =*/false);
-
-		if (buildVersion < pLibraryVersion[i].wBuildVersion) {
-			buildVersion = pLibraryVersion[i].wBuildVersion;
-		}
-	}
-
-	symbolCacheData.SetLongValue(section_libs, sect_libs_keys.BuildVersion,
-	                             buildVersion, nullptr,
-	                             /*UseHex =*/false);
-
-	// Store detected symbol addresses
-	for (auto it = g_SymbolAddresses.begin(); it != g_SymbolAddresses.end();
-	     ++it) {
-		symbolCacheData.SetLongValue(section_symbols, it->first.c_str(),
-		                             it->second, nullptr, /*UseHex =*/true);
-	}
-
-	// Save data to unique symbol cache file
-	symbolCacheData.SaveFile(filename.c_str());
 }

@@ -16,7 +16,6 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 endif()
 
 include_directories("${PROJECT_SOURCE_DIR}/import/XbSymbolDatabase"
-                    "${PROJECT_SOURCE_DIR}/import/simpleini"
                     "${PROJECT_SOURCE_DIR}/import/xxHash")
 
 add_subdirectory ("${PROJECT_SOURCE_DIR}/import/XbSymbolDatabase")
