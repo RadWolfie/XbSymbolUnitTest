@@ -1,6 +1,10 @@
-# Xbox Symbol Cache Generator Test
+# Xbox Symbol Unit Test
 
-XbSymbolCacheGenTest is a console application, all you need to do is click-n-drag xbe file on top of the program or manually input the file path to xbe file. The program perform a test of raw and virtual memory address of detected symbols scans against each other from an xbe file via command prompt.
+XbSymbolUnitTest is a console application, which has two options available.
+1. Run by itself will perform XbSymbolDatabase's internal tests.
+2. Give the path to xbe file in the argument to verify...
+  * xbe does have full library compiled.
+  * none of the existing OOVPA scan doesn't report false positive.
 
 Designed for cross-platform support by using CMakeLists.txt project.
 

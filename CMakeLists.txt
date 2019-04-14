@@ -1,9 +1,9 @@
-# CMakeList.txt : CMake project for XbSymbolCacheGenTest, include source and define
+# CMakeList.txt : CMake project for XbSymbolUnitTest, include source and define
 # project specific logic here.
 #
 cmake_minimum_required (VERSION 3.8)
 
-project (XbSymbolCacheGenTest)
+project (XbSymbolUnitTest)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 17)
@@ -30,7 +30,7 @@ set(SOURCES ${SOURCES}
   "import/xxHash/xxhash.c"
 )
 
-add_executable(XbSymbolCacheGenTest ${SOURCES})
+add_executable(XbSymbolUnitTest ${SOURCES})
 
 # GCC needs a lib for std::filesystem
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
@@ -39,4 +39,4 @@ else()
   set(STD_FILESYSTEM_LIBRARY)
 endif()
 
-target_link_libraries(XbSymbolCacheGenTest LINK_PUBLIC XbSymbolDatabase ${STD_FILESYSTEM_LIBRARY})
+target_link_libraries(XbSymbolUnitTest LINK_PUBLIC XbSymbolDatabase ${STD_FILESYSTEM_LIBRARY})
