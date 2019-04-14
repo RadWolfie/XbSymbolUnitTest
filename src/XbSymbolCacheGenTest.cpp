@@ -23,6 +23,7 @@
 #define _128_MiB 0x08000000
 
 std::map<std::string, uint32_t> g_SymbolAddresses;
+std::ios_base::fmtflags cout_fmt = std::cout.flags();
 
 static const char *section_symbols = "Symbols";
 
@@ -53,6 +54,8 @@ int invalid_argument(int argc, char **argv)
 	return 1;
 }
 
+extern void EmuOutputMessage(xb_output_message mFlag, const char *message);
+extern bool VerifyXbeIsBuildWithXDK(const xbe_header *pXbeHeader);
 extern void ScanXbe(const xbe_header *pXbeHeader, bool is_raw);
 
 unsigned int run_test_raw(const xbe_header *pXbeHeader)
@@ -162,6 +165,21 @@ int main(int argc, char **argv)
 		path_xbe = argv[1];
 	}
 
+	XbSymbolSetOutputVerbosity(XB_OUTPUT_MESSAGE_DEBUG);
+	XbSymbolSetOutputMessage(EmuOutputMessage);
+	XbSymbolDataBaseTestOOVPAs();
+
+	// Do not process xbe test verification
+	if (argc == 1) {
+		std::cout << "INFO: No xbe given, unit test end.\n";
+		return 0;
+	}
+
+	// For output various false detection messages.
+	XbSymbolBypassBuildVersionLimit(true);
+	XbSymbolContinuousSigScan(true);
+	XbSymbolFirstDetectAddressOnly(true);
+
 	std::setlocale(LC_ALL, "English");
 
 	std::ifstream xbeFile = std::ifstream(path_xbe, std::ios::binary);
@@ -180,6 +198,11 @@ int main(int argc, char **argv)
 
 	const xbe_header *pXbeHeader =
 	    reinterpret_cast<const xbe_header *>(xbe_data);
+
+	if (!VerifyXbeIsBuildWithXDK(pXbeHeader)) {
+		pause_for_user_input();
+		return 3;
+	}
 
 	unsigned int test_ret = run_test_raw(pXbeHeader);
 	if (test_ret != 0) {
@@ -243,6 +266,8 @@ int main(int argc, char **argv)
 	std::cout << "INFO: Scanning xbe file is completed.\n";
 #endif
 
+	std::cout << "INFO: Unit test end.\n";
+
 	return 0;
 }
 
@@ -284,26 +309,31 @@ void EmuRegisterSymbol(const char *library_str, uint32_t library_flag,
 
 #ifdef _DEBUG
 	// Output some details
-	std::stringstream output;
-	output << "Symbol Detected: (b" << std::dec << build << ") 0x"
-	       << std::setfill('0') << std::setw(8) << std::hex << func_addr
-	       << " -> " << symbol_str << "\n";
-	std::cout << output.str();
+	std::cout << "Symbol Detected: (b" << std::dec << std::setfill('0')
+	       << std::setw(4) << build << ") 0x" << std::setfill('0')
+	       << std::setw(8) << std::hex << func_addr << " -> " << symbol_str
+	       << "\n";
+	std::cout.flags(cout_fmt);
 #endif
 
 	g_SymbolAddresses[symbol_str] = func_addr;
 }
 
-void ScanXbe(const xbe_header *pXbeHeader, bool is_raw)
+bool VerifyXbeIsBuildWithXDK(const xbe_header *pXbeHeader)
 {
 	size_t xb_start_addr =
 	    reinterpret_cast<size_t>(pXbeHeader) - pXbeHeader->dwBaseAddr;
-	xbe_library_version *pLibraryVersion;
-	xbe_certificate *pCertificate;
+	xbe_library_version *pLibraryVersion = nullptr;
+	xbe_certificate *pCertificate = nullptr;
 
-	// Ensure nothing is still in g_SymbolAddresses before new scan process
-	// start.
-	g_SymbolAddresses.clear();
+	//
+	// initialize Microsoft XDK scanning
+	//
+
+	if (pXbeHeader->dwMagic != 'HEBX') {
+		std::cout << "ERROR: Xbe does not have valid magic!\n";
+		return false;
+	}
 
 	if (pXbeHeader->pLibraryVersionsAddr != 0) {
 		pLibraryVersion = reinterpret_cast<xbe_library_version *>(
@@ -311,8 +341,7 @@ void ScanXbe(const xbe_header *pXbeHeader, bool is_raw)
 	}
 	else {
 		std::cout << "ERROR: Xbe does not contain library versions!\n";
-		pause_for_user_input();
-		return;
+		return false;
 	}
 
 	if (pXbeHeader->pCertificateAddr != 0) {
@@ -321,12 +350,11 @@ void ScanXbe(const xbe_header *pXbeHeader, bool is_raw)
 	}
 	else {
 		std::cout << "ERROR: Xbe does not contain certificate pointer!\n";
-		pause_for_user_input();
-		return;
+		return false;
 	}
 
-	uint16_t xdkVersion = 0;
-	uint32_t XbLibScan = 0;
+	std::cout << "INFO: Detected Microsoft XDK application...\n";
+
 	uint16_t buildVersion = 0;
 	char tAsciiTitle[40] = "Unknown";
 	std::wcstombs(tAsciiTitle, pCertificate->wszTitleName, sizeof(tAsciiTitle));
@@ -343,44 +371,38 @@ void ScanXbe(const xbe_header *pXbeHeader, bool is_raw)
 
 	// Hash the loaded XBE's header, use it as a filename
 	uint32_t uiHash = XXH32((void *)pXbeHeader, sizeof(xbe_header), 0);
-	std::cout << "Xbe header hash       : " << XbSymbolLibraryVersion() << "\n";
+	std::cout << "Xbe header hash       : " << std::hex << uiHash << "\n";
+	std::cout.flags(cout_fmt);
 
 	// Store Library Details
 	for (uint32_t i = 0; i < pXbeHeader->dwLibraryVersions; i++) {
 		std::string LibraryName(pLibraryVersion[i].szName,
 		                        pLibraryVersion[i].szName + 8);
-		std::cout << "LibraryName[" << i << "]        : " << LibraryName
-		          << "\n";
+		std::cout << "Library Name[" << std::setw(2) << i
+		          << "]      : " << LibraryName << "\n";
 
 		if (buildVersion < pLibraryVersion[i].wBuildVersion) {
 			buildVersion = pLibraryVersion[i].wBuildVersion;
 		}
 	}
+	std::cout.flags(cout_fmt);
 
 	std::cout << "BuildVersion          : " << buildVersion << "\n";
+	return true;
+}
 
+void ScanXbe(const xbe_header *pXbeHeader, bool is_raw)
+{
 	bool scan_ret;
 
-	//
-	// initialize Microsoft XDK scanning
-	//
-	if (pLibraryVersion != nullptr) {
+	// Ensure nothing is still in g_SymbolAddresses before new scan process
+	// start.
+	g_SymbolAddresses.clear();
 
-		std::cout
-		    << "Symbol Generator: Detected Microsoft XDK application...\n";
+	scan_ret = XbSymbolScan(pXbeHeader, EmuRegisterSymbol, is_raw);
 
-		XbSymbolSetOutputMessage(EmuOutputMessage);
-
-		scan_ret = XbSymbolScan(pXbeHeader, EmuRegisterSymbol, is_raw);
-
-		if (!scan_ret) {
-			std::cout << "ERROR: XbSymbolScan failed!\n";
-			pause_for_user_input();
-			return;
-		}
-	}
-	else {
-		std::cout << "ERROR: Xbe does not contain library versions!\n";
+	if (!scan_ret) {
+		std::cout << "ERROR: XbSymbolScan failed!\n";
 		pause_for_user_input();
 		return;
 	}
