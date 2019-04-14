@@ -32,7 +32,7 @@ void pause_for_user_input()
 	(void)std::getchar();
 }
 
-int invalid_arugment(int argc, char **argv)
+int invalid_argument(int argc, char **argv)
 {
 	std::cout << "ERROR: Input correct argument as described below.\n\n"
 	             "> XbSymbolCacheGenTest default.xbe\n"
@@ -155,10 +155,9 @@ int main(int argc, char **argv)
 {
 	std::string path_xbe;
 	if (argc > 2) {
-		return invalid_arugment(argc, argv);
+		return invalid_argument(argc, argv);
 	}
 
-	// Since extra parameter doesn't exist, then cwd is left alone.
 	if (argc == 2) {
 		path_xbe = argv[1];
 	}
@@ -235,6 +234,9 @@ int main(int argc, char **argv)
 		std::cout << "INFO: Symbol registered matching...OK!\n";
 	}
 
+	// TODO: Need a function for symbol checking. Will be best to put them in
+	// their own source code file than in here.
+
 #if 0
 	pause_for_user_input();
 #else
@@ -271,7 +273,7 @@ void EmuOutputMessage(xb_output_message mFlag, const char *message)
 
 void EmuRegisterSymbol(const char *library_str, uint32_t library_flag,
                        const char *symbol_str, uint32_t func_addr,
-                       uint32_t revision)
+                       uint32_t build)
 {
 	// Ignore registered symbol in current database.
 	uint32_t hasSymbol = g_SymbolAddresses[symbol_str];
@@ -283,7 +285,7 @@ void EmuRegisterSymbol(const char *library_str, uint32_t library_flag,
 #ifdef _DEBUG
 	// Output some details
 	std::stringstream output;
-	output << "Symbol Generator: (r" << std::dec << revision << ") 0x"
+	output << "Symbol Detected: (b" << std::dec << build << ") 0x"
 	       << std::setfill('0') << std::setw(8) << std::hex << func_addr
 	       << " -> " << symbol_str << "\n";
 	std::cout << output.str();
