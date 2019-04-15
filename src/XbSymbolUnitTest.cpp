@@ -24,8 +24,19 @@
 
 std::map<std::string, uint32_t> g_SymbolAddresses;
 std::ios_base::fmtflags cout_fmt = std::cout.flags();
+unsigned int XbSDB_test_error = 0;
 
 static const char *section_symbols = "Symbols";
+
+#define UNITTEST_OK 0
+#define UNITTEST_FAIL_INVALID_ARG 1
+#define UNITTEST_FAIL_XBSDB 2
+#define UNITTEST_FAIL_OPEN_FILE 3
+#define UNITTEST_FAIL_INVALID_XBE 4
+#define UNITTEST_FAIL_UNABLE_ALLOC_MEM 5
+#define UNITTEST_FAIL_SYMBOLS_NOT_FOUND 6
+#define UNITTEST_FAIL_SYMBOLS_DIFF_SIZE 7
+#define UNITTEST_FAIL_SYMBOLS_NOT_MATCH 8
 
 void pause_for_user_input()
 {
@@ -51,19 +62,32 @@ int invalid_argument(int argc, char **argv)
 #endif
 
 	pause_for_user_input();
-	return 1;
+	return UNITTEST_FAIL_INVALID_ARG;
+}
+
+int output_result_XbSDB()
+{
+	std::cout << "XbSymbolDatabase Test: ";
+	if (XbSDB_test_error == 0) {
+		std::cout << "PASS\n";
+		return UNITTEST_OK;
+	}
+
+	std::cout << "FAIL - " << XbSDB_test_error << " errors\n";
+	return UNITTEST_FAIL_XBSDB;
 }
 
 extern void EmuOutputMessage(xb_output_message mFlag, const char *message);
 extern bool VerifyXbeIsBuildWithXDK(const xbe_header *pXbeHeader);
 
-extern unsigned int run_test_raw(const xbe_header *pXbeHeader);
-extern unsigned int run_test_virtual(const xbe_header *pXbeHeader,
-                                     const uint8_t *xbe_data);
+extern int run_test_raw(const xbe_header *pXbeHeader);
+extern int run_test_virtual(const xbe_header *pXbeHeader,
+                            const uint8_t *xbe_data);
 
 int main(int argc, char **argv)
 {
 	std::string path_xbe;
+	int test_ret = UNITTEST_OK;
 	if (argc > 2) {
 		return invalid_argument(argc, argv);
 	}
@@ -74,12 +98,13 @@ int main(int argc, char **argv)
 
 	XbSymbolSetOutputVerbosity(XB_OUTPUT_MESSAGE_DEBUG);
 	XbSymbolSetOutputMessage(EmuOutputMessage);
-	XbSymbolDataBaseTestOOVPAs();
+	XbSDB_test_error = XbSymbolDataBaseTestOOVPAs();
 
 	// Do not process xbe test verification
 	if (argc == 1) {
+		test_ret = output_result_XbSDB();
 		std::cout << "INFO: No xbe given, unit test end.\n";
-		return 0;
+		return test_ret;
 	}
 
 	// For output various false detection messages.
@@ -93,7 +118,7 @@ int main(int argc, char **argv)
 	if (!xbeFile.is_open()) {
 		std::cout << "ERROR: Unable to open the file!\n";
 		pause_for_user_input();
-		return 2;
+		return UNITTEST_FAIL_OPEN_FILE;
 	}
 
 	std::string fileData = std::string(std::istreambuf_iterator<char>(xbeFile),
@@ -108,11 +133,11 @@ int main(int argc, char **argv)
 
 	if (!VerifyXbeIsBuildWithXDK(pXbeHeader)) {
 		pause_for_user_input();
-		return 3;
+		return UNITTEST_FAIL_INVALID_XBE;
 	}
 
-	unsigned int test_ret = run_test_raw(pXbeHeader);
-	if (test_ret != 0) {
+	test_ret = run_test_raw(pXbeHeader);
+	if (test_ret != UNITTEST_OK) {
 		std::cout << "ERROR: Raw test failed!\n";
 		pause_for_user_input();
 		return test_ret;
@@ -123,7 +148,7 @@ int main(int argc, char **argv)
 	std::map<std::string, uint32_t> g_SymbolAddressesRaw = g_SymbolAddresses;
 
 	test_ret = run_test_virtual(pXbeHeader, xbe_data);
-	if (test_ret != 0) {
+	if (test_ret != UNITTEST_OK) {
 		std::cout << "ERROR: Virtual test failed!\n";
 		pause_for_user_input();
 		return test_ret;
@@ -137,7 +162,7 @@ int main(int argc, char **argv)
 	if (g_SymbolAddresses.size() == 0 || g_SymbolAddressesRaw.size() == 0) {
 		std::cout << "ERROR: Symbols are not detected!\n";
 		pause_for_user_input();
-		return 4;
+		return UNITTEST_FAIL_SYMBOLS_NOT_FOUND;
 	}
 
 	// Then check both raw and simulated do indeed have same size.
@@ -146,7 +171,7 @@ int main(int argc, char **argv)
 		          << "INFO: Raw xbe: " << g_SymbolAddressesRaw.size()
 		          << " - Sim xbox: " << g_SymbolAddresses.size() << "\n";
 		pause_for_user_input();
-		return 5;
+		return UNITTEST_FAIL_SYMBOLS_DIFF_SIZE;
 	}
 	else {
 		std::cout << "INFO: Symbol registered size...OK!\n";
@@ -158,7 +183,7 @@ int main(int argc, char **argv)
 		std::cout
 		    << "ERROR: Symbol registered does not match raw vs virtual xbox\n";
 		pause_for_user_input();
-		return 6;
+		return UNITTEST_FAIL_SYMBOLS_NOT_MATCH;
 	}
 	else {
 		std::cout << "INFO: Symbol registered matching...OK!\n";
@@ -173,9 +198,11 @@ int main(int argc, char **argv)
 	std::cout << "INFO: Scanning xbe file is completed.\n";
 #endif
 
+	test_ret = output_result_XbSDB();
+
 	std::cout << "INFO: Unit test end.\n";
 
-	return 0;
+	return test_ret;
 }
 
 void EmuOutputMessage(xb_output_message mFlag, const char *message)
@@ -217,9 +244,9 @@ void EmuRegisterSymbol(const char *library_str, uint32_t library_flag,
 #ifdef _DEBUG
 	// Output some details
 	std::cout << "Symbol Detected: (b" << std::dec << std::setfill('0')
-	       << std::setw(4) << build << ") 0x" << std::setfill('0')
-	       << std::setw(8) << std::hex << func_addr << " -> " << symbol_str
-	       << "\n";
+	          << std::setw(4) << build << ") 0x" << std::setfill('0')
+	          << std::setw(8) << std::hex << func_addr << " -> " << symbol_str
+	          << "\n";
 	std::cout.flags(cout_fmt);
 #endif
 
@@ -317,7 +344,7 @@ void ScanXbe(const xbe_header *pXbeHeader, bool is_raw)
 	std::cout << "\n";
 }
 
-unsigned int run_test_raw(const xbe_header *pXbeHeader)
+int run_test_raw(const xbe_header *pXbeHeader)
 {
 	std::cout << "Scanning raw xbe file...\n";
 
@@ -325,11 +352,10 @@ unsigned int run_test_raw(const xbe_header *pXbeHeader)
 
 	std::cout << "Scanning raw xbe file... COMPLETE!\n";
 
-	return 0;
+	return UNITTEST_OK;
 }
 
-unsigned int run_test_virtual(const xbe_header *pXbeHeader,
-                              const uint8_t *xbe_data)
+int run_test_virtual(const xbe_header *pXbeHeader, const uint8_t *xbe_data)
 {
 	void *xb_environment = std::calloc(_128_MiB, 1);
 
@@ -340,7 +366,7 @@ unsigned int run_test_virtual(const xbe_header *pXbeHeader,
 		std::cout
 		    << "ERROR: Unable to allocate 128 MiB of virtual xbox memory!\n";
 		pause_for_user_input();
-		return 3;
+		return UNITTEST_FAIL_UNABLE_ALLOC_MEM;
 	}
 
 	std::cout << "Loading sections into virtual xbox memory...\n";
@@ -410,5 +436,5 @@ unsigned int run_test_virtual(const xbe_header *pXbeHeader,
 
 	std::cout << "Scanning virtual xbox environment... COMPLETE!\n";
 
-	return 0;
+	return UNITTEST_OK;
 }
