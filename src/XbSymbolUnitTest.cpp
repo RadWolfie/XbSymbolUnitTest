@@ -313,7 +313,9 @@ bool VerifyXbeIsBuildWithXDK(const xbe_header *pXbeHeader)
 		std::string LibraryName(pLibraryVersion[i].szName,
 		                        pLibraryVersion[i].szName + 8);
 		std::cout << "Library Name[" << std::setw(2) << i
-		          << "]      : " << LibraryName << "\n";
+		          << "]      : " << LibraryName << " (b" << std::setw(4)
+		          << pLibraryVersion[i].wBuildVersion << "." << std::setw(0)
+		          << pLibraryVersion[i].wFlags.QFEVersion << ")\n";
 
 		if (buildVersion < pLibraryVersion[i].wBuildVersion) {
 			buildVersion = pLibraryVersion[i].wBuildVersion;
