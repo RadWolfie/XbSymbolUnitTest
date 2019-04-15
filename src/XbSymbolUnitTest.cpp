@@ -56,103 +56,10 @@ int invalid_argument(int argc, char **argv)
 
 extern void EmuOutputMessage(xb_output_message mFlag, const char *message);
 extern bool VerifyXbeIsBuildWithXDK(const xbe_header *pXbeHeader);
-extern void ScanXbe(const xbe_header *pXbeHeader, bool is_raw);
 
-unsigned int run_test_raw(const xbe_header *pXbeHeader)
-{
-	std::cout << "Scanning raw xbe file...\n";
-
-	ScanXbe(pXbeHeader, true);
-
-	std::cout << "Scanning raw xbe file... COMPLETE!\n";
-
-	return 0;
-}
-
-unsigned int run_test_virtual(const xbe_header *pXbeHeader,
-                              const uint8_t *xbe_data)
-{
-	void *xb_environment = std::calloc(_128_MiB, 1);
-
-	const uint8_t *xb_env_data =
-	    reinterpret_cast<const uint8_t *>(xb_environment);
-
-	if (xb_environment == (void *)0) {
-		std::cout
-		    << "ERROR: Unable to allocate 128 MiB of virtual xbox memory!\n";
-		pause_for_user_input();
-		return 3;
-	}
-
-	std::cout << "Loading sections into virtual xbox memory...\n";
-
-	std::memcpy((uint8_t *)xb_environment + pXbeHeader->dwBaseAddr, pXbeHeader,
-	            sizeof(xbe_header));
-
-	if (sizeof(xbe_header) < pXbeHeader->dwSizeofHeaders) {
-
-		uint32_t extra_size = pXbeHeader->dwSizeofHeaders - sizeof(xbe_header);
-		std::memcpy((uint8_t *)xb_environment + pXbeHeader->dwBaseAddr +
-		                sizeof(xbe_header),
-		            (uint8_t *)xbe_data + sizeof(xbe_header), extra_size);
-	}
-
-	xbe_section_header *pSectionHeaders =
-	    (xbe_section_header *)((uint8_t *)xb_environment +
-	                           pXbeHeader->pSectionHeadersAddr);
-
-	// Load sections into virtualize xbox memory
-	for (uint32_t s = 0; s < pXbeHeader->dwSections; s++) {
-
-		if (pSectionHeaders[s].dwFlags.bPreload) {
-
-			if (pSectionHeaders[s].dwVirtualAddr +
-			        pSectionHeaders[s].dwVirtualSize >
-			    _128_MiB) {
-				std::cout << "ERROR: section request virtual size allocation "
-				             "outside 128MiB "
-				             "range, skipping...\n";
-				continue;
-			}
-
-			if (pSectionHeaders[s].dwVirtualAddr +
-			        pSectionHeaders[s].dwSizeofRaw >
-			    _128_MiB) {
-				std::cout << "ERROR: section request raw size allocation "
-				             "outside 128MiB "
-				             "range, skipping...\n";
-				continue;
-			}
-
-			std::memset((uint8_t *)xb_environment +
-			                pSectionHeaders[s].dwVirtualAddr,
-			            0, pSectionHeaders[s].dwVirtualSize);
-
-			std::memcpy((uint8_t *)xb_environment +
-			                pSectionHeaders[s].dwVirtualAddr,
-			            xbe_data + pSectionHeaders[s].dwRawAddr,
-			            pSectionHeaders[s].dwSizeofRaw);
-
-			// Let XbSymbolDatabase know this section is loaded.
-			pSectionHeaders[s].dwSectionRefCount++;
-			std::cout << "Section preloaded: "
-			          << (const char *)((uint8_t *)xb_environment +
-			                            pSectionHeaders[s].SectionNameAddr)
-			          << "\n";
-		}
-	}
-
-	std::cout << "Scanning virtual xbox environment...\n";
-
-	ScanXbe((xbe_header *)((uint8_t *)xb_environment + pXbeHeader->dwBaseAddr),
-	        false);
-
-	std::free(xb_environment);
-
-	std::cout << "Scanning virtual xbox environment... COMPLETE!\n";
-
-	return 0;
-}
+extern unsigned int run_test_raw(const xbe_header *pXbeHeader);
+extern unsigned int run_test_virtual(const xbe_header *pXbeHeader,
+                                     const uint8_t *xbe_data);
 
 int main(int argc, char **argv)
 {
@@ -408,4 +315,100 @@ void ScanXbe(const xbe_header *pXbeHeader, bool is_raw)
 	}
 
 	std::cout << "\n";
+}
+
+unsigned int run_test_raw(const xbe_header *pXbeHeader)
+{
+	std::cout << "Scanning raw xbe file...\n";
+
+	ScanXbe(pXbeHeader, true);
+
+	std::cout << "Scanning raw xbe file... COMPLETE!\n";
+
+	return 0;
+}
+
+unsigned int run_test_virtual(const xbe_header *pXbeHeader,
+                              const uint8_t *xbe_data)
+{
+	void *xb_environment = std::calloc(_128_MiB, 1);
+
+	const uint8_t *xb_env_data =
+	    reinterpret_cast<const uint8_t *>(xb_environment);
+
+	if (xb_environment == (void *)0) {
+		std::cout
+		    << "ERROR: Unable to allocate 128 MiB of virtual xbox memory!\n";
+		pause_for_user_input();
+		return 3;
+	}
+
+	std::cout << "Loading sections into virtual xbox memory...\n";
+
+	std::memcpy((uint8_t *)xb_environment + pXbeHeader->dwBaseAddr, pXbeHeader,
+	            sizeof(xbe_header));
+
+	if (sizeof(xbe_header) < pXbeHeader->dwSizeofHeaders) {
+
+		uint32_t extra_size = pXbeHeader->dwSizeofHeaders - sizeof(xbe_header);
+		std::memcpy((uint8_t *)xb_environment + pXbeHeader->dwBaseAddr +
+		                sizeof(xbe_header),
+		            (uint8_t *)xbe_data + sizeof(xbe_header), extra_size);
+	}
+
+	xbe_section_header *pSectionHeaders =
+	    (xbe_section_header *)((uint8_t *)xb_environment +
+	                           pXbeHeader->pSectionHeadersAddr);
+
+	// Load sections into virtualize xbox memory
+	for (uint32_t s = 0; s < pXbeHeader->dwSections; s++) {
+
+		if (pSectionHeaders[s].dwFlags.bPreload) {
+
+			if (pSectionHeaders[s].dwVirtualAddr +
+			        pSectionHeaders[s].dwVirtualSize >
+			    _128_MiB) {
+				std::cout << "ERROR: section request virtual size allocation "
+				             "outside 128MiB "
+				             "range, skipping...\n";
+				continue;
+			}
+
+			if (pSectionHeaders[s].dwVirtualAddr +
+			        pSectionHeaders[s].dwSizeofRaw >
+			    _128_MiB) {
+				std::cout << "ERROR: section request raw size allocation "
+				             "outside 128MiB "
+				             "range, skipping...\n";
+				continue;
+			}
+
+			std::memset((uint8_t *)xb_environment +
+			                pSectionHeaders[s].dwVirtualAddr,
+			            0, pSectionHeaders[s].dwVirtualSize);
+
+			std::memcpy((uint8_t *)xb_environment +
+			                pSectionHeaders[s].dwVirtualAddr,
+			            xbe_data + pSectionHeaders[s].dwRawAddr,
+			            pSectionHeaders[s].dwSizeofRaw);
+
+			// Let XbSymbolDatabase know this section is loaded.
+			pSectionHeaders[s].dwSectionRefCount++;
+			std::cout << "Section preloaded: "
+			          << (const char *)((uint8_t *)xb_environment +
+			                            pSectionHeaders[s].SectionNameAddr)
+			          << "\n";
+		}
+	}
+
+	std::cout << "Scanning virtual xbox environment...\n";
+
+	ScanXbe((xbe_header *)((uint8_t *)xb_environment + pXbeHeader->dwBaseAddr),
+	        false);
+
+	std::free(xb_environment);
+
+	std::cout << "Scanning virtual xbox environment... COMPLETE!\n";
+
+	return 0;
 }
