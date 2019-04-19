@@ -35,3 +35,6 @@ typedef std::map<std::string, version_ranges> library_list;
 
 void getLibraryD3D8(const library_list **db_min, 
                     const library_list **db_full);
+
+void getLibraryDSOUND(const library_list **db_min,
+                      const library_list **db_full);
