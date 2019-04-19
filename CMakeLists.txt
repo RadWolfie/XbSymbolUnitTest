@@ -21,15 +21,20 @@ include_directories("${PROJECT_SOURCE_DIR}/import/XbSymbolDatabase"
 add_subdirectory ("${PROJECT_SOURCE_DIR}/import/XbSymbolDatabase")
 
 
+# Add source to this project's executable.
+file(GLOB_RECURSE HEADERS "src/*.hpp")
 
 # Add source to this project's executable.
-file(GLOB SOURCES "src/*.cpp")
+file(GLOB_RECURSE SOURCES "src/*.cpp")
 
 set(SOURCES ${SOURCES}
   "import/xxHash/xxhash.c"
 )
 
-add_executable(XbSymbolUnitTest ${SOURCES})
+source_group(TREE ${CMAKE_CURRENT_LIST_DIR} FILES ${HEADERS})
+source_group(TREE ${CMAKE_CURRENT_LIST_DIR} FILES ${SOURCES})
+
+add_executable(XbSymbolUnitTest ${HEADERS} ${SOURCES})
 
 # GCC needs a lib for std::filesystem
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
