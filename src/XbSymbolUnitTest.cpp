@@ -23,7 +23,7 @@
 
 #define _128_MiB 0x08000000
 
-std::map<std::string, uint32_t> g_SymbolAddresses;
+std::map<std::string, symbol_version> g_SymbolAddresses;
 std::ios_base::fmtflags cout_fmt = std::cout.flags();
 unsigned int XbSDB_test_error = 0;
 
@@ -150,7 +150,8 @@ int main(int argc, char **argv)
 
 	std::cout << "\n";
 
-	std::map<std::string, uint32_t> g_SymbolAddressesRaw = g_SymbolAddresses;
+	std::map<std::string, symbol_version> g_SymbolAddressesRaw =
+	    g_SymbolAddresses;
 
 	test_ret = run_test_virtual(pXbeHeader, xbe_data);
 	if (test_ret != UNITTEST_OK) {
@@ -245,9 +246,9 @@ void EmuRegisterSymbol(const char *library_str, uint32_t library_flag,
                        uint32_t build)
 {
 	// Ignore registered symbol in current database.
-	uint32_t hasSymbol = g_SymbolAddresses[symbol_str];
+	symbol_version hasSymbol = g_SymbolAddresses[symbol_str];
 
-	if (hasSymbol != 0) {
+	if (hasSymbol.first != 0) {
 		return;
 	}
 
@@ -259,8 +260,10 @@ void EmuRegisterSymbol(const char *library_str, uint32_t library_flag,
 	          << "\n";
 	std::cout.flags(cout_fmt);
 #endif
+	hasSymbol.first = func_addr;
+	hasSymbol.second = build;
 
-	g_SymbolAddresses[symbol_str] = func_addr;
+	g_SymbolAddresses[symbol_str] = hasSymbol;
 }
 
 bool VerifyXbeIsBuildWithXDK(const xbe_header *pXbeHeader,

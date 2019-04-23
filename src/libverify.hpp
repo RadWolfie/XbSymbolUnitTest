@@ -35,5 +35,8 @@ typedef struct _lib_versions {
 	uint16_t xonline;
 } lib_versions;
 
-void run_test_verify_symbols(lib_versions &lib_ver,
-                             std::map<std::string, uint32_t> &symbol_addr);
+//                symbol_addr, build
+typedef std::pair<uint32_t, uint32_t> symbol_version;
+
+void run_test_verify_symbols(
+    lib_versions &lib_ver, std::map<std::string, symbol_version> &symbol_addr);

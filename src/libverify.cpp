@@ -28,7 +28,7 @@
 #include "libverify.hpp"
 #include "libverify/unittest.hpp"
 
-typedef std::map<std::string, uint32_t>::iterator list_iterator;
+typedef std::map<std::string, symbol_version>::iterator list_iterator;
 
 typedef std::vector<std::string>::iterator missing_iterator;
 
@@ -68,7 +68,7 @@ bool verify_version_range(const std::string &symbol_str,
 	return ret;
 }
 
-bool match_library_db(std::map<std::string, uint32_t> &list,
+bool match_library_db(std::map<std::string, symbol_version> &list,
                       uint16_t lib_version, const library_list *lib_db,
                       std::vector<std::string> &missing)
 {
@@ -110,11 +110,8 @@ bool match_library_db(std::map<std::string, uint32_t> &list,
 			// Make sure the symbol is not found
 			if (found_str != list_end) {
 
-				// TODO: Keep it?
-				missing.push_back(item->first);
-
-				std::cout << "ERROR: Symbol, " << found_str->first
-				          << ", is detected!\n";
+				std::cout << "ERROR: " << found_str->first << " ("
+				          << found_str->second.second << ") is detected!\n";
 			}
 			continue;
 		}
@@ -142,7 +139,7 @@ bool match_library_db(std::map<std::string, uint32_t> &list,
 	return found_size == lib_db_size;
 }
 
-void run_test_verify_symbol(std::map<std::string, uint32_t> &symbol_addr,
+void run_test_verify_symbol(std::map<std::string, symbol_version> &symbol_addr,
                             const char *lib_str, uint16_t lib_ver,
                             const library_list *db_min,
                             const library_list *db_full)
@@ -183,7 +180,7 @@ void run_test_verify_symbol(std::map<std::string, uint32_t> &symbol_addr,
 }
 
 void run_test_verify_symbols(lib_versions &lib_vers,
-                             std::map<std::string, uint32_t> &symbol_addr)
+                             std::map<std::string, symbol_version> &symbol_addr)
 {
 	const library_list *db_min;
 	const library_list *db_full;
