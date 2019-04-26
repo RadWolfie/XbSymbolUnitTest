@@ -38,3 +38,6 @@ void getLibraryD3D8(const library_list **db_min,
 
 void getLibraryDSOUND(const library_list **db_min,
                       const library_list **db_full);
+
+void getLibraryJVS(const library_list **db_min,
+                   const library_list **db_full);

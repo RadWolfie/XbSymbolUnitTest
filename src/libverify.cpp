@@ -205,4 +205,10 @@ void run_test_verify_symbols(lib_versions &lib_vers,
 	run_test_verify_symbol(symbol_addr, Lib_DSOUND, lib_vers.dsound, db_min,
 	                       db_full, full_lib_count, error_count);
 
+#if 0 // Currently disabled due to not have JVS manual verification
+	getLibraryJVS(&db_min, &db_full);
+	run_test_verify_symbol(symbol_addr, Lib_JVS, lib_vers.jvs, db_min,
+	                       db_full, full_lib_count, error_count);
+#endif
+
 }
