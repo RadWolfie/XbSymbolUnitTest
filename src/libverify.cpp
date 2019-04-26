@@ -152,18 +152,22 @@ void run_test_verify_symbol(std::map<std::string, symbol_version> &symbol_addr,
 		return;
 	}
 
-	symbol_missing.clear();
-	is_match = match_library_db(symbol_addr, lib_ver, db_min, symbol_missing);
+	if (db_min != nullptr) {
 
-	if (!is_match) {
-		std::cout << "INFO: " << lib_str << " min = FAIL\n";
-		for (missing_iterator item = symbol_missing.begin();
-		     item != symbol_missing.end(); item++) {
-			std::cout << "INFO: Missing " << *item << "\n";
+		symbol_missing.clear();
+		is_match =
+		    match_library_db(symbol_addr, lib_ver, db_min, symbol_missing);
+
+		if (!is_match) {
+			for (missing_iterator item = symbol_missing.begin();
+			     item != symbol_missing.end(); item++) {
+				std::cout << "INFO: Missing " << *item << "\n";
+			}
+			std::cout << "INFO: " << lib_str << " min = FAIL\n";
+			return;
 		}
-		return;
+		std::cout << "INFO: " << lib_str << " min = PASS\n";
 	}
-	std::cout << "INFO: " << lib_str << " min = PASS\n";
 
 	symbol_missing.clear();
 	is_match = match_library_db(symbol_addr, lib_ver, db_full, symbol_missing);
