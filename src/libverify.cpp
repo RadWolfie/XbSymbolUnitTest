@@ -219,4 +219,8 @@ void run_test_verify_symbols(lib_versions &lib_vers,
 	run_test_verify_symbol(symbol_addr, Lib_XAPILIB, lib_vers.xapilib, db_min,
 	                       db_full, full_lib_count, error_count);
 
+	getLibraryXGRAPHIC(&db_min, &db_full);
+	run_test_verify_symbol(symbol_addr, Lib_XGRAPHC, lib_vers.xgraphic, db_min,
+	                       db_full, full_lib_count, error_count);
+
 }
