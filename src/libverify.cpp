@@ -215,4 +215,8 @@ void run_test_verify_symbols(lib_versions &lib_vers,
 	run_test_verify_symbol(symbol_addr, Lib_XACTENG, lib_vers.dsound, db_min,
 	                       db_full, full_lib_count, error_count);
 
+	getLibraryXAPILIB(&db_min, &db_full);
+	run_test_verify_symbol(symbol_addr, Lib_XAPILIB, lib_vers.xapilib, db_min,
+	                       db_full, full_lib_count, error_count);
+
 }
