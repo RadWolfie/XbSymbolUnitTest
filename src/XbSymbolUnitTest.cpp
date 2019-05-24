@@ -220,11 +220,14 @@ void EmuOutputMessage(xb_output_message mFlag, const char *message)
 			std::cout << "ERROR  : " << message << std::endl;
 			break;
 		}
-		case XB_OUTPUT_MESSAGE_DEBUG:
-		default: {
+		case XB_OUTPUT_MESSAGE_DEBUG: {
 #ifdef _DEBUG_TRACE
 			std::cout << "DEBUG  : " << message << std::endl;
 #endif
+			break;
+		}
+		default: {
+			std::cout << "UNKNOWN: " << message << std::endl;
 			break;
 		}
 	}
