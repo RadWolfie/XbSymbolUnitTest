@@ -41,3 +41,17 @@ else()
 endif()
 
 target_link_libraries(XbSymbolUnitTest LINK_PUBLIC XbSymbolDatabase ${STD_FILESYSTEM_LIBRARY})
+
+
+install(TARGETS XbSymbolUnitTest
+  RUNTIME DESTINATION bin
+)
+
+# Collect all batch files from scripts folder.
+file(GLOB BATCH_FILES
+  "scripts/*.bat"
+)
+# Put all batch files into same folder where executable is in.
+install(FILES ${BATCH_FILES}
+  TYPE BIN
+)
