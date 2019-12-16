@@ -1,4 +1,4 @@
-// XbSymbolCacheGenTest.cpp : Defines the entry point for the console
+// XbSymbolUnitTest.cpp : Defines the entry point for the console
 // application.
 //
 
@@ -18,6 +18,7 @@
 #include <libXbSymbolDatabase.h>
 #include "Xbe.h"
 #include "helper.hpp"
+#include "libverify.hpp"
 #include "xxhash.h"
 
 #define _128_MiB 0x08000000
@@ -78,7 +79,8 @@ int output_result_XbSDB()
 }
 
 extern void EmuOutputMessage(xb_output_message mFlag, const char *message);
-extern bool VerifyXbeIsBuildWithXDK(const xbe_header *pXbeHeader);
+extern bool VerifyXbeIsBuildWithXDK(const xbe_header *pXbeHeader,
+                                    lib_versions &lib_vers);
 extern bool VerifyXbSymbolDatabaseFilters(const xbe_header *pXbeHeader);
 
 extern int run_test_raw(const xbe_header *pXbeHeader);
@@ -127,7 +129,9 @@ int main(int argc, char **argv)
 	const xbe_header *pXbeHeader =
 	    reinterpret_cast<const xbe_header *>(xbe_data);
 
-	if (!VerifyXbeIsBuildWithXDK(pXbeHeader)) {
+	lib_versions lib_vers = {0};
+
+	if (!VerifyXbeIsBuildWithXDK(pXbeHeader, lib_vers)) {
 		pause_for_user_input();
 		return UNITTEST_FAIL_INVALID_XBE;
 	}
@@ -199,6 +203,8 @@ int main(int argc, char **argv)
 	std::cout << "INFO: Scanning xbe file is completed.\n";
 #endif
 
+	run_test_verify_symbols(lib_vers, g_SymbolAddresses);
+
 	test_ret = output_result_XbSDB();
 
 	std::cout << "INFO: Unit test end.\n";
@@ -257,12 +263,14 @@ void EmuRegisterSymbol(const char *library_str, uint32_t library_flag,
 	g_SymbolAddresses[symbol_str] = func_addr;
 }
 
-bool VerifyXbeIsBuildWithXDK(const xbe_header *pXbeHeader)
+bool VerifyXbeIsBuildWithXDK(const xbe_header *pXbeHeader,
+                             lib_versions &lib_vers)
 {
 	size_t xb_start_addr =
 	    reinterpret_cast<size_t>(pXbeHeader) - pXbeHeader->dwBaseAddr;
 	xbe_library_version *pLibraryVersion = nullptr;
 	xbe_certificate *pCertificate = nullptr;
+	xbe_section_header *pSections = nullptr;
 
 	//
 	// initialize Microsoft XDK scanning
@@ -296,6 +304,10 @@ bool VerifyXbeIsBuildWithXDK(const xbe_header *pXbeHeader)
 	uint16_t buildVersion = 0;
 	char tAsciiTitle[40] = "Unknown";
 	std::wcstombs(tAsciiTitle, pCertificate->wszTitleName, sizeof(tAsciiTitle));
+	pSections = reinterpret_cast<xbe_section_header *>(
+	    xb_start_addr + pXbeHeader->pSectionHeadersAddr);
+	uint32_t sectionSize = pXbeHeader->dwSections;
+	const char *section_str;
 
 	// Output Symbol Database version
 	std::cout << "XbSymbolDatabase_LibraryVersion: "
@@ -325,8 +337,57 @@ bool VerifyXbeIsBuildWithXDK(const xbe_header *pXbeHeader)
 		if (buildVersion < pLibraryVersion[i].wBuildVersion) {
 			buildVersion = pLibraryVersion[i].wBuildVersion;
 		}
+
+		// Translate string to flag for quicker assignment.
+		uint32_t lib_flag = XbSymbolDatabase_LibraryToFlag(LibraryName.c_str());
+		switch (lib_flag) {
+			case XbSymbolLib_D3D8:
+				lib_vers.d3d8 = pLibraryVersion[i].wBuildVersion;
+				break;
+			case XbSymbolLib_D3D8LTCG:
+				lib_vers.d3d8ltcg = pLibraryVersion[i].wBuildVersion;
+				break;
+#if 0
+			case XbSymbolLib_D3DX8:
+				lib_vers.d3dx8 = pLibraryVersion[i].wBuildVersion;
+				break;
+#endif
+			// TODO: Need to add additional check since 4039 is ommited out.
+			case XbSymbolLib_DSOUND:
+				lib_vers.dsound = pLibraryVersion[i].wBuildVersion;
+				break;
+			case XbSymbolLib_XACTENG:
+				lib_vers.xacteng = pLibraryVersion[i].wBuildVersion;
+				break;
+			case XbSymbolLib_XAPILIB:
+				lib_vers.xapilib = pLibraryVersion[i].wBuildVersion;
+				break;
+			case XbSymbolLib_XGRAPHC:
+				lib_vers.xgraphic = pLibraryVersion[i].wBuildVersion;
+				break;
+			case XbSymbolLib_XNET:
+			case XbSymbolLib_XNETN:
+			case XbSymbolLib_XNETS:
+				lib_vers.xnet = pLibraryVersion[i].wBuildVersion;
+				break;
+			case XbSymbolLib_XONLINE:
+			case XbSymbolLib_XONLINES:
+				lib_vers.xonline = pLibraryVersion[i].wBuildVersion;
+				break;
+		}
 	}
 	std::cout.flags(cout_fmt);
+
+	// Force verify DSOUND section do exist then append.
+	for (unsigned int i = 0; i < sectionSize; i++) {
+		section_str = reinterpret_cast<const char *>(
+		    xb_start_addr + pSections[i].SectionNameAddr);
+
+		if (std::strncmp(section_str, Lib_DSOUND, 8) == 0) {
+			lib_vers.dsound = buildVersion;
+			break;
+		}
+	}
 
 	std::cout << "BuildVersion          : " << buildVersion << "\n";
 
