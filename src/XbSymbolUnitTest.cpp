@@ -480,7 +480,7 @@ bool VerifyXbSymbolDatabaseFilters(const xbe_header *pXbeHeader)
 	for (i = 0; i < library_input.count; i++) {
 		std::stringstream str_format;
 		str_format << "Library[" << i
-		           << "]\n    name    = " << library_input.filters[i].name
+		           << "]\n    name    = " << std::string().assign(library_input.filters[i].name, 0, 8)
 		           << ";\n    build   = " << std::dec
 		           << library_input.filters[i].build_version
 		           << ";\n    qre ver = 0x" << std::hex
@@ -495,7 +495,7 @@ bool VerifyXbSymbolDatabaseFilters(const xbe_header *pXbeHeader)
 	for (i = 0; i < section_input.count; i++) {
 		std::stringstream str_format;
 		str_format << "Section[" << i
-		           << "]\n     name        = " << section_input.filters[i].name
+		           << "]\n     name        = " << std::string().assign(section_input.filters[i].name, 0, 8)
 		           << ";\n     virt addr   = 0x" << std::hex
 		           << section_input.filters[i].xb_virt_addr
 		           << ";\n     buffer addr = 0x" << std::hex
