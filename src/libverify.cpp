@@ -169,6 +169,10 @@ void run_test_verify_symbol(std::map<std::string, symbol_version> &symbol_addr,
 		std::cout << "INFO: " << lib_str << " min = PASS\n";
 	}
 
+	if (db_full == nullptr) {
+		std::cout << "WARN: " << lib_str << " db is missing, skipping...\n";
+		return;
+	}
 	symbol_missing.clear();
 	is_match = match_library_db(symbol_addr, lib_ver, db_full, symbol_missing);
 
