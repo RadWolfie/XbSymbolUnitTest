@@ -41,3 +41,6 @@ void getLibraryDSOUND(const library_list **db_min,
 
 void getLibraryJVS(const library_list **db_min,
                    const library_list **db_full);
+
+void getLibraryXACTENG(const library_list **db_min,
+                       const library_list **db_full);

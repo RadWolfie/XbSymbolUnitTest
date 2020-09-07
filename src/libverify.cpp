@@ -211,4 +211,8 @@ void run_test_verify_symbols(lib_versions &lib_vers,
 	                       db_full, full_lib_count, error_count);
 #endif
 
+	getLibraryXACTENG(&db_min, &db_full);
+	run_test_verify_symbol(symbol_addr, Lib_XACTENG, lib_vers.dsound, db_min,
+	                       db_full, full_lib_count, error_count);
+
 }
