@@ -50,3 +50,6 @@ void getLibraryXAPILIB(const library_list **db_min,
 
 void getLibraryXGRAPHIC(const library_list **db_min,
                         const library_list **db_full);
+
+void getLibraryXNET(const library_list **db_min,
+                    const library_list **db_full);
