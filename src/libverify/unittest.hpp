@@ -32,3 +32,6 @@ typedef struct _version_ranges {
 #define VER_MAX 0xFFFF
 
 typedef std::map<std::string, version_ranges> library_list;
+
+void getLibraryD3D8(const library_list **db_min, 
+                    const library_list **db_full);

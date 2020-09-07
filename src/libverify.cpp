@@ -194,4 +194,11 @@ void run_test_verify_symbols(lib_versions &lib_vers,
 {
 	const library_list *db_min;
 	const library_list *db_full;
+
+	getLibraryD3D8(&db_min, &db_full);
+	run_test_verify_symbol(symbol_addr, Lib_D3D8, lib_vers.d3d8, db_min,
+	                       db_full, full_lib_count, error_count);
+	run_test_verify_symbol(symbol_addr, Lib_D3D8LTCG, lib_vers.d3d8ltcg, db_min,
+	                       db_full, full_lib_count, error_count);
+
 }
