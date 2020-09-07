@@ -148,7 +148,7 @@ void run_test_verify_symbol(std::map<std::string, symbol_version> &symbol_addr,
 	bool is_match;
 
 	if (lib_ver == 0) {
-		std::cout << "INFO: " << lib_str << " is not detected, skipping...\n";
+		std::cout << "INFO: " << lib_str << " is not detected, skipping...\n\n";
 		return;
 	}
 
@@ -163,14 +163,14 @@ void run_test_verify_symbol(std::map<std::string, symbol_version> &symbol_addr,
 			     item != symbol_missing.end(); item++) {
 				std::cout << "INFO: Missing " << *item << "\n";
 			}
-			std::cout << "INFO: " << lib_str << " min = FAIL\n";
+			std::cout << "INFO: " << lib_str << " min = FAIL\n\n";
 			return;
 		}
 		std::cout << "INFO: " << lib_str << " min = PASS\n";
 	}
 
 	if (db_full == nullptr) {
-		std::cout << "WARN: " << lib_str << " db is missing, skipping...\n";
+		std::cout << "WARN: " << lib_str << " db is missing, skipping...\n\n";
 		return;
 	}
 	symbol_missing.clear();
@@ -181,10 +181,10 @@ void run_test_verify_symbol(std::map<std::string, symbol_version> &symbol_addr,
 		     item != symbol_missing.end(); item++) {
 			std::cout << "INFO: Missing " << *item << "\n";
 		}
-		std::cout << "INFO: " << lib_str << " full = FAIL\n";
+		std::cout << "INFO: " << lib_str << " full = FAIL\n\n";
 		return;
 	}
-	std::cout << "INFO: " << lib_str << " full = PASS\n";
+	std::cout << "INFO: " << lib_str << " full = PASS\n\n";
 }
 
 void run_test_verify_symbols(lib_versions &lib_vers,
