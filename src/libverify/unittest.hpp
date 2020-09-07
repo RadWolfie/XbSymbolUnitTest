@@ -53,3 +53,6 @@ void getLibraryXGRAPHIC(const library_list **db_min,
 
 void getLibraryXNET(const library_list **db_min,
                     const library_list **db_full);
+
+void getLibraryXONLINE(const library_list **db_min,
+                       const library_list **db_full);

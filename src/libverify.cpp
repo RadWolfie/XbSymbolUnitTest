@@ -227,4 +227,8 @@ void run_test_verify_symbols(lib_versions &lib_vers,
 	run_test_verify_symbol(symbol_addr, Lib_XNET, lib_vers.xnet, db_min,
 	                       db_full, full_lib_count, error_count);
 
+	getLibraryXONLINE(&db_min, &db_full);
+	run_test_verify_symbol(symbol_addr, Lib_XONLINE, lib_vers.xonline, db_min,
+	                       db_full, full_lib_count, error_count);
+
 }
