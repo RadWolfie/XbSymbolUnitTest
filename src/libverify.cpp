@@ -70,7 +70,7 @@ bool verify_version_range(const std::string &symbol_str,
 
 bool match_library_db(std::map<std::string, symbol_version> &list,
                       uint16_t lib_version, const library_list *lib_db,
-                      std::vector<std::string> &missing)
+                      std::vector<std::string> &missing, unsigned &error_count)
 {
 	size_t lib_db_size = lib_db->size();
 	size_t found_size = 0;
@@ -88,6 +88,7 @@ bool match_library_db(std::map<std::string, symbol_version> &list,
 		// If the range is bad, the function will output error(s)
 		// then skip the symbol verify.
 		if (!verify_version_range(item->first, version_range)) {
+			error_count++;
 			continue;
 		}
 
@@ -109,7 +110,7 @@ bool match_library_db(std::map<std::string, symbol_version> &list,
 
 			// Make sure the symbol is not found
 			if (found_str != list_end) {
-
+				error_count++;
 				std::cout << "ERROR: " << found_str->first << " ("
 				          << found_str->second.second << ") is detected!\n";
 			}
@@ -142,7 +143,7 @@ bool match_library_db(std::map<std::string, symbol_version> &list,
 void run_test_verify_symbol(std::map<std::string, symbol_version> &symbol_addr,
                             const char *lib_str, uint16_t lib_ver,
                             const library_list *db_min,
-                            const library_list *db_full)
+                            const library_list *db_full, unsigned &full_lib_count, unsigned &error_count)
 {
 	std::vector<std::string> symbol_missing;
 	bool is_match;
@@ -156,7 +157,7 @@ void run_test_verify_symbol(std::map<std::string, symbol_version> &symbol_addr,
 
 		symbol_missing.clear();
 		is_match =
-		    match_library_db(symbol_addr, lib_ver, db_min, symbol_missing);
+		    match_library_db(symbol_addr, lib_ver, db_min, symbol_missing, error_count);
 
 		if (!is_match) {
 			for (missing_iterator item = symbol_missing.begin();
@@ -174,7 +175,7 @@ void run_test_verify_symbol(std::map<std::string, symbol_version> &symbol_addr,
 		return;
 	}
 	symbol_missing.clear();
-	is_match = match_library_db(symbol_addr, lib_ver, db_full, symbol_missing);
+	is_match = match_library_db(symbol_addr, lib_ver, db_full, symbol_missing, error_count);
 
 	if (!is_match) {
 		for (missing_iterator item = symbol_missing.begin();
@@ -184,11 +185,12 @@ void run_test_verify_symbol(std::map<std::string, symbol_version> &symbol_addr,
 		std::cout << "INFO: " << lib_str << " full = FAIL\n\n";
 		return;
 	}
+	full_lib_count++;
 	std::cout << "INFO: " << lib_str << " full = PASS\n\n";
 }
 
 void run_test_verify_symbols(lib_versions &lib_vers,
-                             std::map<std::string, symbol_version> &symbol_addr)
+                             std::map<std::string, symbol_version> &symbol_addr, unsigned &full_lib_count, unsigned &error_count)
 {
 	const library_list *db_min;
 	const library_list *db_full;

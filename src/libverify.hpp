@@ -38,5 +38,6 @@ typedef struct _lib_versions {
 //                symbol_addr, build
 typedef std::pair<uint32_t, uint32_t> symbol_version;
 
-void run_test_verify_symbols(
-    lib_versions &lib_ver, std::map<std::string, symbol_version> &symbol_addr);
+void run_test_verify_symbols(lib_versions &lib_ver,
+                             std::map<std::string, symbol_version> &symbol_addr,
+                             unsigned &full_lib_count, unsigned &error_count);

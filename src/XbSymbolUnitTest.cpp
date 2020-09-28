@@ -204,7 +204,17 @@ int main(int argc, char **argv)
 	std::cout << "INFO: Scanning xbe file is completed.\n";
 #endif
 
-	run_test_verify_symbols(lib_vers, g_SymbolAddresses);
+	unsigned full_lib_count = 0;
+	unsigned error_count = 0;
+	run_test_verify_symbols(lib_vers, g_SymbolAddresses, full_lib_count, error_count);
+
+	if (error_count) {
+		std::cout << "XbSymbolUnitTest: FAIL - " << error_count << " errors\n";
+	}
+
+	if (full_lib_count) {
+		std::cout << "XbSymbolUnitTest: Total of " << full_lib_count << " full libraries found\n";
+	}
 
 	test_ret = output_result_XbSDB();
 
