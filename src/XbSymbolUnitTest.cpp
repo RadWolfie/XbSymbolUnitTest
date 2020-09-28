@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include <string>
 
-#include "XbSymbolDatabase.h"
+#include <libXbSymbolDatabase.h>
 #include "Xbe.h"
 #include "helper.hpp"
 #include "xxhash.h"

@@ -40,7 +40,7 @@ else()
   set(STD_FILESYSTEM_LIBRARY)
 endif()
 
-target_link_libraries(XbSymbolUnitTest LINK_PUBLIC XbSymbolDatabase ${STD_FILESYSTEM_LIBRARY})
+target_link_libraries(XbSymbolUnitTest LINK_PUBLIC libXbSymbolDatabase ${STD_FILESYSTEM_LIBRARY})
 
 
 install(TARGETS XbSymbolUnitTest
