@@ -17,6 +17,9 @@
 
 #pragma once
 
+#include <xref/list_xref.h>
+
+#include <cassert>
 #include <map>
 #include <stdint.h>
 #include <string>
@@ -31,28 +34,43 @@ typedef struct _version_ranges {
 #define VER_NONE 0x000
 #define VER_MAX 0xFFFF
 
-typedef std::map<std::string, version_ranges> library_list;
+#define STRINGIZEX(x) #x
+#define STRINGIZE(x) STRINGIZEX(x)
+#define XREF_SYMBOL(e) XREF_##e
+// clang-format off
+#define VER_RANGE(v1l, v1h, v2l, v2h) {v1l, v1h, v2l, v2h}
+#define REGISTER_SYMBOL_INLINE(e, v) { XREF_SYMBOL(e), {{ #e, v}}}
+// Below are aliases for XREF usage only.
+#define REGISTER_SYMBOL_INLINE_D3D(e, v) { XREF_SYMBOL(D3D_##e), {{ #e, v}}}
+#define REGISTER_SYMBOL_INLINE_D3D8(e, v) { XREF_SYMBOL(D3D8_##e), {{ #e, v}}}
+#define REGISTER_SYMBOL_INLINE_VAR_OFFSET(e, v) { XREF_SYMBOL(OFFSET_##e), {{ STRINGIZE(e##_OFFSET), v}}}
+#define REGISTER_SYMBOL_INLINE_XAPI(e, v) { XREF_SYMBOL(XAPI_##e), {{ #e, v}}}
+// Below macros are intended to use multiple symbol names combine with single XREF.
+#define REGISTER_SYMBOL(e, v) { #e, v}
+#define REGISTER_SYMBOLS(Symbol, ...) { XREF_##Symbol, { __VA_ARGS__ }}
+// clang-format on
+typedef const std::map<uint32_t, const std::map<const std::string, version_ranges>>
+    library_list;
 
-void getLibraryD3D8(const library_list **db_min, 
-                    const library_list **db_full);
+struct library_db {
+	const library_list* min;
+	const library_list* full;
+	uint32_t xref_offset;
+	uint32_t xref_total;
+};
 
-void getLibraryDSOUND(const library_list **db_min,
-                      const library_list **db_full);
+void getLibraryD3D8(library_db& lib_db);
 
-void getLibraryJVS(const library_list **db_min,
-                   const library_list **db_full);
+void getLibraryDSOUND(library_db& lib_db);
 
-void getLibraryXACTENG(const library_list **db_min,
-                       const library_list **db_full);
+void getLibraryJVS(library_db& lib_db);
 
-void getLibraryXAPILIB(const library_list **db_min,
-                       const library_list **db_full);
+void getLibraryXACTENG(library_db& lib_db);
 
-void getLibraryXGRAPHIC(const library_list **db_min,
-                        const library_list **db_full);
+void getLibraryXAPILIB(library_db& lib_db);
 
-void getLibraryXNET(const library_list **db_min,
-                    const library_list **db_full);
+void getLibraryXGRAPHIC(library_db& lib_db);
 
-void getLibraryXONLINE(const library_list **db_min,
-                       const library_list **db_full);
+void getLibraryXNET(library_db& lib_db);
+
+void getLibraryXONLINE(library_db& lib_db);

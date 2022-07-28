@@ -12,9 +12,9 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 endif()
 
-include_directories("${PROJECT_SOURCE_DIR}/import/XbSymbolDatabase"
-                    "${PROJECT_SOURCE_DIR}/import/xxHash")
+include_directories("${PROJECT_SOURCE_DIR}/import/xxHash")
 
+set(XBSDB_BUILD_CLI ON)
 add_subdirectory ("${PROJECT_SOURCE_DIR}/import/XbSymbolDatabase")
 
 
@@ -31,7 +31,12 @@ set(SOURCES ${SOURCES}
 source_group(TREE ${CMAKE_CURRENT_LIST_DIR} FILES ${HEADERS})
 source_group(TREE ${CMAKE_CURRENT_LIST_DIR} FILES ${SOURCES})
 
-add_executable(XbSymbolUnitTest ${HEADERS} ${SOURCES})
+add_executable(${PROJECT_NAME} ${HEADERS} ${SOURCES})
+
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+ # Configure startup project
+ set_property(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}" PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
+endif()
 
 # GCC needs a lib for std::filesystem
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
@@ -40,10 +45,10 @@ else()
   set(STD_FILESYSTEM_LIBRARY)
 endif()
 
-target_link_libraries(XbSymbolUnitTest LINK_PUBLIC libXbSymbolDatabase ${STD_FILESYSTEM_LIBRARY})
+target_link_libraries(${PROJECT_NAME} LINK_PUBLIC libXbSymbolDatabase ${STD_FILESYSTEM_LIBRARY})
 
 
-install(TARGETS XbSymbolUnitTest
+install(TARGETS ${PROJECT_NAME}
   RUNTIME DESTINATION bin
 )
 

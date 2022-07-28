@@ -1,12 +1,15 @@
-BasedOnStyle: LLVM
+# Format Style Options - Created with Clang Power Tools
+---
+BasedOnStyle: Mozilla
+AccessModifierOffset: 0
+AlwaysBreakAfterDefinitionReturnType: None
+AlwaysBreakAfterReturnType: None
 BreakBeforeBraces: Stroustrup
-Language: Cpp
+ColumnLimit: 0
+ContinuationIndentWidth: 4
 IndentWidth: 4
+MaxEmptyLinesToKeep: 2
+SortIncludes: false
 TabWidth: 4
 UseTab: ForIndentation
-AlignEscapedNewlinesLeft: true
-AllowShortFunctionsOnASingleLine: None
-AllowShortIfStatementsOnASingleLine: false
-AlignTrailingComments: true
-IndentCaseLabels: true
-MaxEmptyLinesToKeep: 2
+...

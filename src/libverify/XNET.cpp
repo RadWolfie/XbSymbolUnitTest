@@ -17,14 +17,43 @@
 
 #include "unittest.hpp"
 
-static const std::map<std::string, version_ranges> database_min = {
+static const library_list database_min = {};
+
+static const library_list database_full = {
+	REGISTER_SYMBOL_INLINE(XnInit, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(WSAStartup, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(XNetStartup, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(XNetGetEthernetLinkStatus, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(bind, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(connect, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(ioctlsocket, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(listen, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(recv, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(send, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(socket, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
 };
 
-static const std::map<std::string, version_ranges> database_max = {
+enum LOCAL_XREFS {
+#undef XREF_SYMBOL
+#define XREF_SYMBOL(e) e,
+#include <xref/xnet.def>
+#undef XREF_SYMBOL
+	LOCAL_COUNT
 };
 
-void getLibraryXNET(const library_list **db_min, const library_list **db_full)
+// Verify if symbol name is at start of offset.
+#define XREF_SYMBOL_GET(e) e
+#define XREF_OFFSET XREF_SYMBOL_GET(XnInit)
+static_assert(XREF_OFFSET == 0);
+// Then get symbol's actual offset.
+#undef XREF_SYMBOL_GET
+#define XREF_SYMBOL_GET(e) XREF_##e
+
+void getLibraryXNET(library_db& lib_db)
 {
-	*db_min = nullptr; //&database_min;
-	*db_full = nullptr; //&database_full;
+	lib_db.min = nullptr; //&database_min;
+	lib_db.full = &database_full;
+	lib_db.xref_offset = XREF_OFFSET;
+	lib_db.xref_total = LOCAL_COUNT;
+	assert(database_full.size() == LOCAL_COUNT);
 }

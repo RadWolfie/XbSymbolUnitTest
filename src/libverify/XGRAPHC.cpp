@@ -20,41 +20,59 @@
 
 #include "unittest.hpp"
 
-static const std::map<std::string, version_ranges> database_full = {
-    {"DisassembleVertexShader", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"SupportsSSE", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XFONT_OpenBitmapFontFromMemory", {4361, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGAssembleShader", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGBufferCreate", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGColorAdjustContrast", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGColorAdjustSaturation", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGCompressRect", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGIsSwizzledFormat", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGPlaneFromPointNormal", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGPlaneFromPoints", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGPlaneIntersectLine", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGPlaneNormalize", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGPlaneTransform", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGSetCubeTextureHeader", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGSetFixupHeader", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGSetIndexBufferHeader", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGSetPaletteHeader", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGSetPushBufferHeader", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGSetSurfaceHeader", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGSetTextureHeader", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGSetVertexBufferHeader", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGSetVolumeTextureHeader", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGSwizzleBox", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGSwizzleRect", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGUnswizzleBox", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGUnswizzleRect", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGWriteSurfaceOrTextureToXPR", {3911, VER_MAX, VER_NONE, VER_NONE}},
-    {"XGWriteSurfaceToFile", {3911, VER_MAX, VER_NONE, VER_NONE}},
+static const library_list database_full = {
+	//REGISTER_SYMBOL_INLINE(DisassembleVertexShader, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)), // TODO: Need assign XREF...
+	//REGISTER_SYMBOL_INLINE(SupportsSSE, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)), // TODO: Need assign XREF...
+	REGISTER_SYMBOL_INLINE(XFONT_OpenBitmapFontFromMemory, VER_RANGE(4361, VER_MAX, VER_NONE, VER_NONE)),
+	//REGISTER_SYMBOL_INLINE(XGAssembleShader, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)), // TODO: Need assign XREF...
+	//REGISTER_SYMBOL_INLINE(XGBufferCreate, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)), // TODO: Need assign XREF...
+	//REGISTER_SYMBOL_INLINE(XGColorAdjustContrast, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)), // TODO: Need assign XREF...
+	//REGISTER_SYMBOL_INLINE(XGColorAdjustSaturation, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)), // TODO: Need assign XREF...
+	REGISTER_SYMBOL_INLINE(XGCompressRect, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(XGIsSwizzledFormat, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+	//REGISTER_SYMBOL_INLINE(XGPlaneFromPointNormal, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)), // TODO: Need assign XREF...
+	//REGISTER_SYMBOL_INLINE(XGPlaneFromPoints, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)), // TODO: Need assign XREF...
+	//REGISTER_SYMBOL_INLINE(XGPlaneIntersectLine, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)), // TODO: Need assign XREF...
+	//REGISTER_SYMBOL_INLINE(XGPlaneNormalize, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)), // TODO: Need assign XREF...
+	//REGISTER_SYMBOL_INLINE(XGPlaneTransform, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)), // TODO: Need assign XREF...
+	//REGISTER_SYMBOL_INLINE(XGSetCubeTextureHeader, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)), // TODO: Need assign XREF...
+	//REGISTER_SYMBOL_INLINE(XGSetFixupHeader, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)), // TODO: Need assign XREF...
+	REGISTER_SYMBOL_INLINE(XGSetIndexBufferHeader, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+	//REGISTER_SYMBOL_INLINE(XGSetPaletteHeader, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)), // TODO: Need assign XREF...
+	//REGISTER_SYMBOL_INLINE(XGSetPushBufferHeader, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)), // TODO: Need assign XREF...
+	//REGISTER_SYMBOL_INLINE(XGSetSurfaceHeader, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)), // TODO: Need assign XREF...
+	REGISTER_SYMBOL_INLINE(XGSetTextureHeader, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(XGSetVertexBufferHeader, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+	//REGISTER_SYMBOL_INLINE(XGSetVolumeTextureHeader, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)), // TODO: Need assign XREF...
+	REGISTER_SYMBOL_INLINE(XGSwizzleBox, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(XGSwizzleRect, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(XGUnswizzleBox, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(XGUnswizzleRect, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(XGWriteSurfaceOrTextureToXPR, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+	//REGISTER_SYMBOL_INLINE(XGWriteSurfaceToFile, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)), // TODO: Need assign XREF...
 };
 
-void getLibraryXGRAPHIC(const library_list **db_min,
-                        const library_list **db_full)
+enum LOCAL_XREFS {
+#undef XREF_SYMBOL
+#define XREF_SYMBOL(e) e,
+#include <xref/xgraphic.def>
+#undef XREF_SYMBOL
+	LOCAL_COUNT
+};
+
+// Verify if symbol name is at start of offset.
+#define XREF_SYMBOL_GET(e) e
+#define XREF_OFFSET XREF_SYMBOL_GET(XFONT_OpenBitmapFontFromMemory)
+static_assert(XREF_OFFSET == 0);
+// Then get symbol's actual offset.
+#undef XREF_SYMBOL_GET
+#define XREF_SYMBOL_GET(e) XREF_##e
+
+void getLibraryXGRAPHIC(library_db& lib_db)
 {
-	*db_min = nullptr; //&database_min;
-	*db_full = &database_full;
+	lib_db.min = nullptr; //&database_min;
+	lib_db.full = &database_full;
+	lib_db.xref_offset = XREF_OFFSET;
+	lib_db.xref_total = LOCAL_COUNT;
+	assert(database_full.size() == LOCAL_COUNT);
 }

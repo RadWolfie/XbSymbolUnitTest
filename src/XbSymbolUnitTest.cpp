@@ -14,20 +14,23 @@
 #include <sstream>
 #include <stdlib.h>
 #include <string>
+#include <thread>
 
-#include <libXbSymbolDatabase.h>
 #include "Xbe.h"
 #include "helper.hpp"
 #include "libverify.hpp"
 #include "xxhash.h"
+#include <libXbSymbolDatabase.h>
+#include <xref/list_xref.h>
 
 #define _128_MiB 0x08000000
 
-std::map<std::string, symbol_version> g_SymbolAddresses;
+std::map<uint32_t, symbol_result> g_SymbolAddresses;
 std::ios_base::fmtflags cout_fmt = std::cout.flags();
 unsigned int XbSDB_test_error = 0;
+unsigned int XbUnitTest_error = 0;
 
-static const char *section_symbols = "Symbols";
+static const char* section_symbols = "Symbols";
 
 #define UNITTEST_OK 0
 #define UNITTEST_FAIL_INVALID_ARG 1
@@ -45,7 +48,7 @@ void pause_for_user_input()
 	(void)std::getchar();
 }
 
-int invalid_argument(int argc, char **argv)
+int invalid_argument(int argc, char** argv)
 {
 	std::cout << "ERROR: Input correct argument as described below.\n\n"
 	             "> XbSymbolCacheGenTest default.xbe\n"
@@ -78,16 +81,17 @@ int output_result_XbSDB()
 	return UNITTEST_FAIL_XBSDB;
 }
 
-extern void EmuOutputMessage(xb_output_message mFlag, const char *message);
-extern bool VerifyXbeIsBuildWithXDK(const xbe_header *pXbeHeader,
-                                    lib_versions &lib_vers);
-extern bool VerifyXbSymbolDatabaseFilters(const xbe_header *pXbeHeader);
+extern void EmuOutputMessage(xb_output_message mFlag, const char* message);
+extern bool VerifyXbeIsBuiltWithXDK(const xbe_header* pXbeHeader,
+                                    lib_versions& lib_vers,
+                                    std::filesystem::path path_xbe);
+extern bool VerifyXbSymbolDatabaseFilters(const xbe_header* pXbeHeader);
 
-extern int run_test_raw(const xbe_header *pXbeHeader);
-extern int run_test_virtual(const xbe_header *pXbeHeader,
-                            const uint8_t *xbe_data);
+extern int run_test_raw(const xbe_header* pXbeHeader);
+extern int run_test_virtual(const xbe_header* pXbeHeader,
+                            const uint8_t* xbe_data);
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
 	std::string path_xbe;
 	int test_ret = UNITTEST_OK;
@@ -102,6 +106,9 @@ int main(int argc, char **argv)
 	XbSymbolDatabase_SetOutputVerbosity(XB_OUTPUT_MESSAGE_DEBUG);
 	XbSymbolDatabase_SetOutputMessage(EmuOutputMessage);
 	XbSDB_test_error = XbSymbolDatabase_TestOOVPAs();
+
+	std::cout << "Total symbols in XbSymbolDatabase: "
+	          << XbSymbolDatabase_GetTotalSymbols(XbSymbolLib_ALL) << "\n";
 
 	// Do not process xbe test verification
 	if (argc == 1) {
@@ -123,15 +130,15 @@ int main(int argc, char **argv)
 	                                   std::istreambuf_iterator<char>());
 	std::cout << "File size: " << fileData.size() << " byte(s).\n";
 
-	const uint8_t *xbe_data =
-	    reinterpret_cast<const uint8_t *>(fileData.data());
+	const uint8_t* xbe_data =
+	    reinterpret_cast<const uint8_t*>(fileData.data());
 
-	const xbe_header *pXbeHeader =
-	    reinterpret_cast<const xbe_header *>(xbe_data);
+	const xbe_header* pXbeHeader =
+	    reinterpret_cast<const xbe_header*>(xbe_data);
 
-	lib_versions lib_vers = {0};
+	lib_versions lib_vers{};
 
-	if (!VerifyXbeIsBuildWithXDK(pXbeHeader, lib_vers)) {
+	if (!VerifyXbeIsBuiltWithXDK(pXbeHeader, lib_vers, path_xbe)) {
 		pause_for_user_input();
 		return UNITTEST_FAIL_INVALID_XBE;
 	}
@@ -150,8 +157,7 @@ int main(int argc, char **argv)
 
 	std::cout << "\n";
 
-	std::map<std::string, symbol_version> g_SymbolAddressesRaw =
-	    g_SymbolAddresses;
+	std::map<uint32_t, symbol_result> g_SymbolAddressesRaw = g_SymbolAddresses;
 
 	test_ret = run_test_virtual(pXbeHeader, xbe_data);
 	if (test_ret != UNITTEST_OK) {
@@ -176,6 +182,33 @@ int main(int argc, char **argv)
 		std::cout << "ERROR: Registered symbols is not even.\n"
 		          << "INFO: Raw xbe: " << g_SymbolAddressesRaw.size()
 		          << " - Sim xbox: " << g_SymbolAddresses.size() << "\n";
+
+		// Remove all identical symbols
+		for (const auto& xref : g_SymbolAddresses) {
+			g_SymbolAddressesRaw.erase(xref.first);
+		}
+		for (const auto& xref : g_SymbolAddressesRaw) {
+			g_SymbolAddresses.erase(xref.first);
+		}
+
+		// Now report what's missing compared to other.
+		for (const auto& xref : g_SymbolAddresses) {
+			std::cout << "ERROR: g_SymbolAddressesRaw is missing "
+			          << XbSymbolDatabase_LibraryToString(
+			                 xref.second.library_flag)
+			          << " (b" << std::dec << std::setfill('0') << std::setw(4)
+			          << xref.second.build << ") " << xref.second.addr
+			          << " -> " << xref.second.symbol << "\n";
+		}
+		for (const auto& xref : g_SymbolAddressesRaw) {
+			std::cout << "ERROR: g_SymbolAddresses is missing "
+			          << XbSymbolDatabase_LibraryToString(
+			                 xref.second.library_flag)
+			          << " (b" << std::dec << std::setfill('0') << std::setw(4)
+			          << xref.second.build << ") " << xref.second.addr
+			          << " -> " << xref.second.symbol << "\n";
+		}
+
 		pause_for_user_input();
 		return UNITTEST_FAIL_SYMBOLS_DIFF_SIZE;
 	}
@@ -184,8 +217,7 @@ int main(int argc, char **argv)
 	}
 
 	// Finally, check each string and addresses are the same.
-	if (!std::equal(g_SymbolAddresses.begin(), g_SymbolAddresses.end(),
-	                g_SymbolAddressesRaw.begin())) {
+	if (!std::equal(g_SymbolAddresses.begin(), g_SymbolAddresses.end(), g_SymbolAddressesRaw.begin())) {
 		std::cout
 		    << "ERROR: Symbol registered does not match raw vs virtual xbox\n";
 		pause_for_user_input();
@@ -195,25 +227,24 @@ int main(int argc, char **argv)
 		std::cout << "INFO: Symbol registered matching...OK!\n";
 	}
 
-	// TODO: Need a function for symbol checking. Will be best to put them in
-	// their own source code file than in here.
-
-#if 0
-	pause_for_user_input();
-#else
-	std::cout << "INFO: Scanning xbe file is completed.\n";
-#endif
+	std::cout << "INFO: Scanning xbe file is completed.\n"
+	          << "INFO: Verifying detected symbols against unit test's "
+	             "symbols...\n\n";
 
 	unsigned full_lib_count = 0;
 	unsigned error_count = 0;
 	run_test_verify_symbols(lib_vers, g_SymbolAddresses, full_lib_count, error_count);
+
+	// Append internal errors such as EmuRegisterSymbol function's result.
+	error_count += XbUnitTest_error;
 
 	if (error_count) {
 		std::cout << "XbSymbolUnitTest: FAIL - " << error_count << " errors\n";
 	}
 
 	if (full_lib_count) {
-		std::cout << "XbSymbolUnitTest: Total of " << full_lib_count << " full libraries found\n";
+		std::cout << "XbSymbolUnitTest: Total of " << full_lib_count
+		          << " full libraries found\n";
 	}
 
 	test_ret = output_result_XbSDB();
@@ -223,7 +254,7 @@ int main(int argc, char **argv)
 	return test_ret;
 }
 
-void EmuOutputMessage(xb_output_message mFlag, const char *message)
+void EmuOutputMessage(xb_output_message mFlag, const char* message)
 {
 	switch (mFlag) {
 		case XB_OUTPUT_MESSAGE_INFO: {
@@ -249,39 +280,101 @@ void EmuOutputMessage(xb_output_message mFlag, const char *message)
 	}
 }
 
-void EmuRegisterSymbol(const char *library_str, uint32_t library_flag,
-                       const char *symbol_str, uint32_t func_addr,
+void EmuRegisterSymbol(const char* library_str,
+                       uint32_t library_flag,
+                       uint32_t xref_index,
+                       const char* symbol_str,
+                       uint32_t func_addr,
                        uint32_t build)
 {
-	// Ignore registered symbol in current database.
-	symbol_version hasSymbol = g_SymbolAddresses[symbol_str];
+	// Report invalid index
+	if (xref_index == -1) {
+		std::cout
+		    << "ERROR  : Symbol could not be register due to xref index is -1: "
+		    << XbSymbolDatabase_LibraryToString(library_flag) << " (b"
+		    << std::dec << std::setfill('0') << std::setw(4) << build << ") 0x"
+		    << std::setfill('0') << std::setw(8) << std::hex << func_addr
+		    << " -> " << symbol_str << "\n";
+		XbUnitTest_error++;
+		return;
+	}
+	// Ignore kernel indexes
+	if (xref_index <= XREF_KT_COUNT) {
+		// TODO: Should we output a warning or info message about kernel thunk
+		// being output?
+		return;
+	}
 
-	if (hasSymbol.first != 0) {
+	// Ignore registered symbol in current database.
+	symbol_result hasSymbol = g_SymbolAddresses[xref_index];
+
+	if (hasSymbol.addr != 0) {
+		// But check if symbol name is different from xref entry.
+		if (hasSymbol.symbol != symbol_str) {
+			std::cout
+			    << "ERROR  : Symbol names returned for same xref index: \n"
+			    << XbSymbolDatabase_LibraryToString(hasSymbol.library_flag)
+			    << " (b" << std::dec << std::setfill('0') << std::setw(4)
+			    << hasSymbol.build << ") 0x" << std::setfill('0')
+			    << std::setw(8) << std::hex << hasSymbol.addr << " -> "
+			    << hasSymbol.symbol << "\nvs\n"
+			    << XbSymbolDatabase_LibraryToString(library_flag) << " (b"
+			    << std::dec << std::setfill('0') << std::setw(4) << build
+			    << ") 0x" << std::setfill('0') << std::setw(8) << std::hex
+			    << func_addr << " -> " << symbol_str << "\n";
+			XbUnitTest_error++;
+		}
 		return;
 	}
 
 #ifdef _DEBUG
 	// Output some details
-	std::cout << "Symbol Detected: (b" << std::dec << std::setfill('0')
-	          << std::setw(4) << build << ") 0x" << std::setfill('0')
-	          << std::setw(8) << std::hex << func_addr << " -> " << symbol_str
-	          << "\n";
+	std::cout << "[" << std::setw(8) << std::hex << std::this_thread::get_id()
+	          << "] Symbol Detected: "
+	          << XbSymbolDatabase_LibraryToString(library_flag) << " (b"
+	          << std::dec << std::setfill('0') << std::setw(4) << build
+	          << ") 0x" << std::setfill('0') << std::setw(8) << std::hex
+	          << func_addr << " -> " << symbol_str << "\n";
 	std::cout.flags(cout_fmt);
 #endif
-	hasSymbol.first = func_addr;
-	hasSymbol.second = build;
+	hasSymbol.addr = func_addr;
+	hasSymbol.build = build;
+	hasSymbol.library_flag = library_flag;
+	hasSymbol.symbol = symbol_str;
 
-	g_SymbolAddresses[symbol_str] = hasSymbol;
+	g_SymbolAddresses[xref_index] = hasSymbol;
 }
 
-bool VerifyXbeIsBuildWithXDK(const xbe_header *pXbeHeader,
-                             lib_versions &lib_vers)
+static xb_xbe_type GetXbeType(const xbe_header* pXbeHeader)
+{
+	// Detect if the XBE is for Chihiro (Untested!) :
+	// This is based on
+	// https://github.com/radare/radare2/blob/7ffe2599a192bf5b9333560345f80dd97f096277/libr/bin/p/bin_xbe.c#L29
+	if ((pXbeHeader->dwEntryAddr & 0xf0000000) == 0x40000000) {
+		return XB_XBE_TYPE_CHIHIRO;
+	}
+
+	// Check for Debug XBE, using high bit of the kernel thunk address :
+	// (DO NOT test like
+	// https://github.com/radare/radare2/blob/7ffe2599a192bf5b9333560345f80dd97f096277/libr/bin/p/bin_xbe.c#L33
+	// !)
+	if ((pXbeHeader->dwKernelImageThunkAddr & 0x80000000) > 0) {
+		return XB_XBE_TYPE_DEBUG;
+	}
+
+	// Otherwise, the XBE is a Retail build :
+	return XB_XBE_TYPE_RETAIL;
+}
+
+bool VerifyXbeIsBuiltWithXDK(const xbe_header* pXbeHeader,
+                             lib_versions& lib_vers,
+                             std::filesystem::path path_xbe)
 {
 	size_t xb_start_addr =
 	    reinterpret_cast<size_t>(pXbeHeader) - pXbeHeader->dwBaseAddr;
-	xbe_library_version *pLibraryVersion = nullptr;
-	xbe_certificate *pCertificate = nullptr;
-	xbe_section_header *pSections = nullptr;
+	xbe_library_version* pLibraryVersion = nullptr;
+	xbe_certificate* pCertificate = nullptr;
+	xbe_section_header* pSections = nullptr;
 
 	//
 	// initialize Microsoft XDK scanning
@@ -293,7 +386,7 @@ bool VerifyXbeIsBuildWithXDK(const xbe_header *pXbeHeader,
 	}
 
 	if (pXbeHeader->pLibraryVersionsAddr != 0) {
-		pLibraryVersion = reinterpret_cast<xbe_library_version *>(
+		pLibraryVersion = reinterpret_cast<xbe_library_version*>(
 		    xb_start_addr + pXbeHeader->pLibraryVersionsAddr);
 	}
 	else {
@@ -302,7 +395,7 @@ bool VerifyXbeIsBuildWithXDK(const xbe_header *pXbeHeader,
 	}
 
 	if (pXbeHeader->pCertificateAddr != 0) {
-		pCertificate = reinterpret_cast<xbe_certificate *>(
+		pCertificate = reinterpret_cast<xbe_certificate*>(
 		    xb_start_addr + pXbeHeader->pCertificateAddr);
 	}
 	else {
@@ -315,10 +408,10 @@ bool VerifyXbeIsBuildWithXDK(const xbe_header *pXbeHeader,
 	uint16_t buildVersion = 0;
 	char tAsciiTitle[40] = "Unknown";
 	std::wcstombs(tAsciiTitle, pCertificate->wszTitleName, sizeof(tAsciiTitle));
-	pSections = reinterpret_cast<xbe_section_header *>(
+	pSections = reinterpret_cast<xbe_section_header*>(
 	    xb_start_addr + pXbeHeader->pSectionHeadersAddr);
 	uint32_t sectionSize = pXbeHeader->dwSections;
-	const char *section_str;
+	const char* section_str;
 
 	// Output Symbol Database version
 	std::cout << "XbSymbolDatabase_LibraryVersion: "
@@ -332,7 +425,7 @@ bool VerifyXbeIsBuildWithXDK(const xbe_header *pXbeHeader,
 	          << "\n";
 
 	// Hash the loaded XBE's header, use it as a filename
-	uint32_t uiHash = XXH32((void *)pXbeHeader, sizeof(xbe_header), 0);
+	uint32_t uiHash = XXH32((void*)pXbeHeader, sizeof(xbe_header), 0);
 	std::cout << "Xbe header hash       : " << std::hex << uiHash << "\n";
 	std::cout.flags(cout_fmt);
 
@@ -380,24 +473,41 @@ bool VerifyXbeIsBuildWithXDK(const xbe_header *pXbeHeader,
 			case XbSymbolLib_XNETN:
 			case XbSymbolLib_XNETS:
 				lib_vers.xnet = pLibraryVersion[i].wBuildVersion;
+				// Technically, it is combined with XONLINE library. So, check
+				// if XONLINE doesn't exist then force check.
+				if (!lib_vers.xonline) {
+					lib_vers.xonline = pLibraryVersion[i].wBuildVersion;
+				}
 				break;
 			case XbSymbolLib_XONLINE:
 			case XbSymbolLib_XONLINES:
+			case XbSymbolLib_XONLINLS:
 				lib_vers.xonline = pLibraryVersion[i].wBuildVersion;
+				// Technically, it is combined with XNET library. So, check if
+				// XNET doesn't exist then force check.
+				if (!lib_vers.xnet) {
+					lib_vers.xnet = pLibraryVersion[i].wBuildVersion;
+				}
 				break;
 		}
 	}
 	std::cout.flags(cout_fmt);
 
-	// Force verify DSOUND section do exist then append.
+	// Force verify if DSOUND section do exist, then append.
 	for (unsigned int i = 0; i < sectionSize; i++) {
-		section_str = reinterpret_cast<const char *>(
+		section_str = reinterpret_cast<const char*>(
 		    xb_start_addr + pSections[i].SectionNameAddr);
 
 		if (std::strncmp(section_str, Lib_DSOUND, 8) == 0) {
 			lib_vers.dsound = buildVersion;
 			break;
 		}
+	}
+
+	// Force verify if title is chihiro or contains "boot.id" folder, then append.
+	if (GetXbeType(pXbeHeader) == XB_XBE_TYPE_CHIHIRO ||
+	    std::filesystem::exists(path_xbe.parent_path() / "boot.id")) {
+		lib_vers.jvs = buildVersion;
 	}
 
 	std::cout << "BuildVersion          : " << buildVersion << "\n";
@@ -407,9 +517,10 @@ bool VerifyXbeIsBuildWithXDK(const xbe_header *pXbeHeader,
 }
 
 
-bool GetXbSymbolDatabaseFilters(const xbe_header *pXbeHeader, bool is_raw,
-                                XbSDBLibraryHeader &library_output,
-                                XbSDBSectionHeader &section_output)
+bool GetXbSymbolDatabaseFilters(const xbe_header* pXbeHeader,
+                                bool is_raw,
+                                XbSDBLibraryHeader& library_output,
+                                XbSDBSectionHeader& section_output)
 {
 	std::string error_msg = "unknown";
 
@@ -449,8 +560,7 @@ bool GetXbSymbolDatabaseFilters(const xbe_header *pXbeHeader, bool is_raw,
 		goto scanError;
 	}
 
-	(void)XbSymbolDatabase_GenerateSectionFilter(pXbeHeader, &section_output,
-	                                             is_raw);
+	(void)XbSymbolDatabase_GenerateSectionFilter(pXbeHeader, &section_output, is_raw);
 	return true;
 
 scanError:
@@ -464,20 +574,20 @@ scanError:
 		section_output.filters = nullptr;
 	}
 
-	std::cout << "ERROR: GetXbSymbolDatabaseFilters failed for: " << error_msg << "\n";
+	std::cout << "ERROR: GetXbSymbolDatabaseFilters failed for: " << error_msg
+	          << "\n";
 	pause_for_user_input();
 	return false;
 }
 
-bool VerifyXbSymbolDatabaseFilters(const xbe_header *pXbeHeader)
+bool VerifyXbSymbolDatabaseFilters(const xbe_header* pXbeHeader)
 {
 	XbSDBLibraryHeader library_input = {};
 	XbSDBSectionHeader section_input = {};
 
 	std::cout << "Getting library and section filters...\n";
 
-	if (!GetXbSymbolDatabaseFilters(pXbeHeader, true, library_input,
-	                                section_input)) {
+	if (!GetXbSymbolDatabaseFilters(pXbeHeader, true, library_input, section_input)) {
 		return false;
 	}
 
@@ -487,8 +597,8 @@ bool VerifyXbSymbolDatabaseFilters(const xbe_header *pXbeHeader)
 	unsigned int i;
 	for (i = 0; i < library_input.count; i++) {
 		std::stringstream str_format;
-		str_format << "Library[" << i
-		           << "]\n    name    = " << std::string().assign(library_input.filters[i].name, 0, 8)
+		str_format << "Library[" << i << "]\n    name    = "
+		           << std::string().assign(library_input.filters[i].name, 0, 8)
 		           << ";\n    build   = " << std::dec
 		           << library_input.filters[i].build_version
 		           << ";\n    qre ver = 0x" << std::hex
@@ -502,8 +612,8 @@ bool VerifyXbSymbolDatabaseFilters(const xbe_header *pXbeHeader)
 
 	for (i = 0; i < section_input.count; i++) {
 		std::stringstream str_format;
-		str_format << "Section[" << i
-		           << "]\n     name        = " << std::string().assign(section_input.filters[i].name, 0, 8)
+		str_format << "Section[" << i << "]\n     name        = "
+		           << std::string().assign(section_input.filters[i].name, 0, 8)
 		           << ";\n     virt addr   = 0x" << std::hex
 		           << section_input.filters[i].xb_virt_addr
 		           << ";\n     buffer addr = 0x" << std::hex
@@ -521,7 +631,7 @@ bool VerifyXbSymbolDatabaseFilters(const xbe_header *pXbeHeader)
 	return true;
 }
 
-void ScanXbe(const xbe_header *pXbeHeader, bool is_raw)
+void ScanXbe(const xbe_header* pXbeHeader, bool is_raw)
 {
 	std::string error_msg = "unknown";
 
@@ -533,22 +643,37 @@ void ScanXbe(const xbe_header *pXbeHeader, bool is_raw)
 	XbSDBLibraryHeader library_input = {};
 	XbSDBSectionHeader section_input = {};
 
-	if (!GetXbSymbolDatabaseFilters(pXbeHeader, is_raw, library_input,
-	                                section_input)) {
+	if (!GetXbSymbolDatabaseFilters(pXbeHeader, is_raw, library_input, section_input)) {
 		return;
 	}
 
+	std::vector<std::thread> threads;
+	auto ScanLibraryFunc = [](XbSymbolContextHandle pHandle,
+	                          const XbSDBLibrary* library) -> void {
+		unsigned int LastUnResolvedXRefs = 0, CurrentUnResolvedXRefs = 0;
+		bool xref_first_pass =
+		    true; // Set to true for search speed optimization
+		do {
+			LastUnResolvedXRefs = CurrentUnResolvedXRefs;
+
+			// Start library scan against symbol database we want to
+			// search for address of symbols and xreferences.
+			CurrentUnResolvedXRefs +=
+			    XbSymbolContext_ScanLibrary(pHandle, library, xref_first_pass);
+
+			xref_first_pass = false;
+		} while (LastUnResolvedXRefs < CurrentUnResolvedXRefs);
+	};
+
 	xbaddr kt_addr = XbSymbolDatabase_GetKernelThunkAddress(pXbeHeader);
 
-	if (!XbSymbolDatabase_CreateXbSymbolContext(&pHandle, EmuRegisterSymbol,
-	                                            library_input, section_input,
-	                                            kt_addr)) {
+	if (!XbSymbolDatabase_CreateXbSymbolContext(&pHandle, EmuRegisterSymbol, library_input, section_input, kt_addr)) {
 		error_msg = "Unable to create XbSymbolContext handle.";
 		goto scanError;
 	}
 
-	delete[] library_input.filters;
-	library_input.filters = nullptr;
+	// delete[] library_input.filters;
+	// library_input.filters = nullptr;
 	delete[] section_input.filters;
 	section_input.filters = nullptr;
 
@@ -563,7 +688,18 @@ void ScanXbe(const xbe_header *pXbeHeader, bool is_raw)
 	// up scan process. Either by replace toolset to CLANG or wait until MSVC
 	// support C11 standard. Perhaps use macro to detect compiler selection?
 	// Then toggle between the two.
-	XbSymbolContext_ScanAllLibraryFilter(pHandle);
+	// XbSymbolContext_ScanAllLibraryFilter(pHandle);
+
+	for (unsigned i = 0; i < library_input.count; i++) {
+		threads.emplace_back(
+		    std::thread(ScanLibraryFunc, pHandle, &library_input.filters[i]));
+	}
+
+	for (auto& thread : threads) {
+		thread.join();
+	}
+	delete[] library_input.filters;
+	library_input.filters = nullptr;
 
 	XbSymbolContext_RegisterXRefs(pHandle);
 
@@ -586,7 +722,7 @@ scanError:
 	pause_for_user_input();
 }
 
-int run_test_raw(const xbe_header *pXbeHeader)
+int run_test_raw(const xbe_header* pXbeHeader)
 {
 	std::cout << "Scanning raw xbe file...\n";
 
@@ -597,14 +733,14 @@ int run_test_raw(const xbe_header *pXbeHeader)
 	return UNITTEST_OK;
 }
 
-int run_test_virtual(const xbe_header *pXbeHeader, const uint8_t *xbe_data)
+int run_test_virtual(const xbe_header* pXbeHeader, const uint8_t* xbe_data)
 {
-	void *xb_environment = std::calloc(_128_MiB, 1);
+	void* xb_environment = std::calloc(_128_MiB, 1);
 
-	const uint8_t *xb_env_data =
-	    reinterpret_cast<const uint8_t *>(xb_environment);
+	const uint8_t* xb_env_data =
+	    reinterpret_cast<const uint8_t*>(xb_environment);
 
-	if (xb_environment == (void *)0) {
+	if (xb_environment == (void*)0) {
 		std::cout
 		    << "ERROR: Unable to allocate 128 MiB of virtual xbox memory!\n";
 		pause_for_user_input();
@@ -613,20 +749,20 @@ int run_test_virtual(const xbe_header *pXbeHeader, const uint8_t *xbe_data)
 
 	std::cout << "Loading sections into virtual xbox memory...\n";
 
-	std::memcpy((uint8_t *)xb_environment + pXbeHeader->dwBaseAddr, pXbeHeader,
-	            sizeof(xbe_header));
+	std::memcpy((uint8_t*)xb_environment + pXbeHeader->dwBaseAddr, pXbeHeader, sizeof(xbe_header));
 
 	if (sizeof(xbe_header) < pXbeHeader->dwSizeofHeaders) {
 
 		uint32_t extra_size = pXbeHeader->dwSizeofHeaders - sizeof(xbe_header);
-		std::memcpy((uint8_t *)xb_environment + pXbeHeader->dwBaseAddr +
+		std::memcpy((uint8_t*)xb_environment + pXbeHeader->dwBaseAddr +
 		                sizeof(xbe_header),
-		            (uint8_t *)xbe_data + sizeof(xbe_header), extra_size);
+		            (uint8_t*)xbe_data + sizeof(xbe_header),
+		            extra_size);
 	}
 
-	xbe_section_header *pSectionHeaders =
-	    (xbe_section_header *)((uint8_t *)xb_environment +
-	                           pXbeHeader->pSectionHeadersAddr);
+	xbe_section_header* pSectionHeaders =
+	    (xbe_section_header*)((uint8_t*)xb_environment +
+	                          pXbeHeader->pSectionHeadersAddr);
 
 	// Load sections into virtualize xbox memory
 	for (uint32_t s = 0; s < pXbeHeader->dwSections; s++) {
@@ -651,11 +787,12 @@ int run_test_virtual(const xbe_header *pXbeHeader, const uint8_t *xbe_data)
 				continue;
 			}
 
-			std::memset((uint8_t *)xb_environment +
+			std::memset((uint8_t*)xb_environment +
 			                pSectionHeaders[s].dwVirtualAddr,
-			            0, pSectionHeaders[s].dwVirtualSize);
+			            0,
+			            pSectionHeaders[s].dwVirtualSize);
 
-			std::memcpy((uint8_t *)xb_environment +
+			std::memcpy((uint8_t*)xb_environment +
 			                pSectionHeaders[s].dwVirtualAddr,
 			            xbe_data + pSectionHeaders[s].dwRawAddr,
 			            pSectionHeaders[s].dwSizeofRaw);
@@ -663,15 +800,15 @@ int run_test_virtual(const xbe_header *pXbeHeader, const uint8_t *xbe_data)
 			// Let XbSymbolDatabase know this section is loaded.
 			pSectionHeaders[s].dwSectionRefCount++;
 			std::cout << "Section preloaded: "
-			          << (const char *)((uint8_t *)xb_environment +
-			                            pSectionHeaders[s].SectionNameAddr)
+			          << (const char*)((uint8_t*)xb_environment +
+			                           pSectionHeaders[s].SectionNameAddr)
 			          << "\n";
 		}
 	}
 
 	std::cout << "Scanning virtual xbox environment...\n";
 
-	ScanXbe((xbe_header *)((uint8_t *)xb_environment + pXbeHeader->dwBaseAddr),
+	ScanXbe((xbe_header*)((uint8_t*)xb_environment + pXbeHeader->dwBaseAddr),
 	        false);
 
 	std::free(xb_environment);

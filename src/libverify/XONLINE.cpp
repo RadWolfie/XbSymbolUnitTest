@@ -17,24 +17,43 @@
 
 #include "unittest.hpp"
 
-static const std::map<std::string, version_ranges> database_full = {
-    {"CXo_XOnlineLogon", {4361, VER_MAX, VER_NONE, VER_NONE}},
-    {"XOnlineLogon", {4361, VER_MAX, VER_NONE, VER_NONE}},
-    {"CXo_XOnlineMatchSearch", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"XOnlineMatchSearch", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"XOnlineMatchSearchResultsLen_Body", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"XOnlineMatchSearchResultsLen", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"CXo_XOnlineMatchSearchGetResults", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"XOnlineMatchSearchGetResults", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"CXo_XOnlineMatchSessionUpdate", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"XOnlineMatchSessionUpdate", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"CXo_XOnlineMatchSessionCreate", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"XOnlineMatchSessionCreate", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"XoUpdateLaunchNewImageInternal", {4627, VER_MAX, VER_NONE, VER_NONE}},
+static const library_list database_full = {
+	REGISTER_SYMBOL_INLINE(CXo_XOnlineLogon, VER_RANGE(4361, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(XOnlineLogon, VER_RANGE(4361, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(CXo_XOnlineMatchSearch, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(XOnlineMatchSearch, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(CXo_XOnlineMatchSearchResultsLen, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(XOnlineMatchSearchResultsLen, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(CXo_XOnlineMatchSearchGetResults, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(XOnlineMatchSearchGetResults, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(CXo_XOnlineMatchSessionUpdate, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(XOnlineMatchSessionUpdate, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(CXo_XOnlineMatchSessionCreate, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(XOnlineMatchSessionCreate, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(XoUpdateLaunchNewImageInternal, VER_RANGE(4627, VER_MAX, VER_NONE, VER_NONE)),
 };
 
-void getLibraryXONLINE(const library_list **db_min, const library_list **db_full)
+enum LOCAL_XREFS {
+#undef XREF_SYMBOL
+#define XREF_SYMBOL(e) e,
+#include <xref/xonline.def>
+#undef XREF_SYMBOL
+	LOCAL_COUNT
+};
+
+// Verify if symbol name is at start of offset.
+#define XREF_SYMBOL_GET(e) e
+#define XREF_OFFSET XREF_SYMBOL_GET(CXo_XOnlineLogon)
+static_assert(XREF_OFFSET == 0);
+// Then get symbol's actual offset.
+#undef XREF_SYMBOL_GET
+#define XREF_SYMBOL_GET(e) XREF_##e
+
+void getLibraryXONLINE(library_db& lib_db)
 {
-	*db_min = nullptr; //&database_min;
-	*db_full = &database_full;
+	lib_db.min = nullptr; //&database_min;
+	lib_db.full = &database_full;
+	lib_db.xref_offset = XREF_OFFSET;
+	lib_db.xref_total = LOCAL_COUNT;
+	assert(database_full.size() == LOCAL_COUNT);
 }

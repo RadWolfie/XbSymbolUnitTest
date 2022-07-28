@@ -36,9 +36,19 @@ typedef struct _lib_versions {
 	uint16_t xonline;
 } lib_versions;
 
-//                symbol_addr, build
-typedef std::pair<uint32_t, uint32_t> symbol_version;
+typedef struct _symbol_result {
+	uint32_t addr;
+	uint32_t build;
+	uint32_t library_flag;
+	std::string symbol;
+} symbol_result;
+
+constexpr bool operator==(const symbol_result &lhs,
+                          const symbol_result &rhs)
+{
+	return lhs.addr == rhs.addr && lhs.build == rhs.build && lhs.library_flag == rhs.library_flag && lhs.symbol == rhs.symbol;
+}
 
 void run_test_verify_symbols(lib_versions &lib_ver,
-                             std::map<std::string, symbol_version> &symbol_addr,
+                             std::map<uint32_t, symbol_result> &symbols_list,
                              unsigned &full_lib_count, unsigned &error_count);

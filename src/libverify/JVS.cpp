@@ -17,77 +17,113 @@
 
 #include "unittest.hpp"
 
-static const std::map<std::string, version_ranges> database_min = {
-    {"JVS_SendCommand_String", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsBACKUP_Read_String", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsBACKUP_Write_String", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsEEPROM_Read_String", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsEEPROM_Write_String", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsFirmwareDownload_String", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsFirmwareUpload_String", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsNodeReceivePacket_String", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsNodeSendPacket_String", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsRTC_Read_String", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsRTC_Write_String", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsScFirmwareDownload_String", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsScFirmwareUpload_String", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsScReceiveMidi_String", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsScReceiveRs323c_String", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsScSendMidi_String", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsScSendRs323c_String", {4831, VER_MAX, VER_NONE, VER_NONE}},
+static const library_list database_min = {
+	REGISTER_SYMBOL_INLINE(JVS_SendCommand_String, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(JvsBACKUP_Read_String, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(JvsBACKUP_Write_String, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(JvsEEPROM_Read_String, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(JvsEEPROM_Write_String, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(JvsFirmwareDownload_String, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(JvsFirmwareUpload_String, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(JvsNodeReceivePacket_String, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(JvsNodeSendPacket_String, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(JvsRTC_Read_String, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(JvsRTC_Write_String, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(JvsScFirmwareDownload_String, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(JvsScFirmwareUpload_String, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(JvsScReceiveMidi_String, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(JvsScReceiveRs323c_String, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(JvsScSendMidi_String, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(JvsScSendRs323c_String, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
 };
 
-static const std::map<std::string, version_ranges> database_full = {
-    {"JVS_SendCommand", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JVS_SendCommand2", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JVS_SendCommand3", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsBACKUP_Read", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsBACKUP_Read2", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsBACKUP_Read3", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsBACKUP_Write", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsBACKUP_Write2", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsEEPROM_Read", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsEEPROM_Read2", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsEEPROM_Read3", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsEEPROM_Write", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsEEPROM_Write2", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsEEPROM_Write3", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsFirmwareDownload", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsFirmwareDownload2", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsFirmwareDownload3", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsFirmwareDownload4", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsFirmwareUpload", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsFirmwareUpload2", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsFirmwareUpload3", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsFirmwareUpload4", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsNodeReceivePacket", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsNodeReceivePacket2", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsNodeSendPacket", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsNodeSendPacket2", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsRTC_Read", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsRTC_Read2", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsRTC_Read3", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsRTC_Write", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsRTC_Write2", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsScFirmwareDownload", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsScFirmwareDownload2", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsScFirmwareDownload3", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsScFirmwareDownload4", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsScFirmwareUpload", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsScFirmwareUpload2", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsScFirmwareUpload3", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsScReceiveMidi", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsScReceiveMidi2", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsScReceiveRs323c", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsScReceiveRs323c2", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsScSendMidi", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsScSendMidi2", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsScSendRs323c", {4831, VER_MAX, VER_NONE, VER_NONE}},
-    {"JvsScSendRs323c2", {4831, VER_MAX, VER_NONE, VER_NONE}},
+static const library_list database_full = {
+	REGISTER_SYMBOLS(JVS_SendCommand,
+	                 REGISTER_SYMBOL(JVS_SendCommand, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JVS_SendCommand2, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JVS_SendCommand3, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE))),
+	REGISTER_SYMBOLS(JvsBACKUP_Read,
+	                 REGISTER_SYMBOL(JvsBACKUP_Read, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsBACKUP_Read2, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsBACKUP_Read3, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE))),
+	REGISTER_SYMBOLS(JvsBACKUP_Write,
+	                 REGISTER_SYMBOL(JvsBACKUP_Write, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsBACKUP_Write2, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE))),
+	REGISTER_SYMBOLS(JvsEEPROM_Read,
+	                 REGISTER_SYMBOL(JvsEEPROM_Read, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsEEPROM_Read2, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsEEPROM_Read3, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE))),
+	REGISTER_SYMBOLS(JvsEEPROM_Write,
+	                 REGISTER_SYMBOL(JvsEEPROM_Write, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsEEPROM_Write2, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsEEPROM_Write3, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE))),
+	REGISTER_SYMBOLS(JvsFirmwareDownload,
+	                 REGISTER_SYMBOL(JvsFirmwareDownload, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsFirmwareDownload2, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsFirmwareDownload3, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsFirmwareDownload4, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE))),
+	REGISTER_SYMBOLS(JvsFirmwareUpload,
+	                 REGISTER_SYMBOL(JvsFirmwareUpload, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsFirmwareUpload2, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsFirmwareUpload3, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsFirmwareUpload4, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE))),
+	REGISTER_SYMBOLS(JvsNodeReceivePacket,
+	                 REGISTER_SYMBOL(JvsNodeReceivePacket, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsNodeReceivePacket2, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE))),
+	REGISTER_SYMBOLS(JvsNodeSendPacket,
+	                 REGISTER_SYMBOL(JvsNodeSendPacket, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsNodeSendPacket2, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE))),
+	REGISTER_SYMBOLS(JvsRTC_Read,
+	                 REGISTER_SYMBOL(JvsRTC_Read, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsRTC_Read2, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsRTC_Read3, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE))),
+	REGISTER_SYMBOLS(JvsRTC_Write,
+	                 REGISTER_SYMBOL(JvsRTC_Write, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsRTC_Write2, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE))),
+	REGISTER_SYMBOLS(JvsScFirmwareDownload,
+	                 REGISTER_SYMBOL(JvsScFirmwareDownload, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsScFirmwareDownload2, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsScFirmwareDownload3, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsScFirmwareDownload4, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE))),
+	REGISTER_SYMBOLS(JvsScFirmwareUpload,
+	                 REGISTER_SYMBOL(JvsScFirmwareUpload, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsScFirmwareUpload2, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsScFirmwareUpload3, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE))),
+	REGISTER_SYMBOLS(JvsScReceiveMidi,
+	                 REGISTER_SYMBOL(JvsScReceiveMidi, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsScReceiveMidi2, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE))),
+	REGISTER_SYMBOLS(JvsScReceiveRs323c,
+	                 REGISTER_SYMBOL(JvsScReceiveRs323c, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsScReceiveRs323c2, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE))),
+	REGISTER_SYMBOLS(JvsScSendMidi,
+	                 REGISTER_SYMBOL(JvsScSendMidi, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsScSendMidi2, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE))),
+	REGISTER_SYMBOLS(JvsScSendRs323c,
+	                 REGISTER_SYMBOL(JvsScSendRs323c, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
+	                 REGISTER_SYMBOL(JvsScSendRs323c2, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE))),
 };
 
-void getLibraryJVS(const library_list **db_min, const library_list **db_full)
+enum LOCAL_XREFS {
+#undef XREF_SYMBOL
+#define XREF_SYMBOL(e) e,
+#include <xref/jvs.def>
+#undef XREF_SYMBOL
+	LOCAL_COUNT
+};
+
+// Verify if symbol name is at start of offset.
+#define XREF_SYMBOL_GET(e) e
+#define XREF_OFFSET XREF_SYMBOL_GET(JVS_SendCommand_String)
+static_assert(XREF_OFFSET == 0);
+// Then get symbol's actual offset.
+#undef XREF_SYMBOL_GET
+#define XREF_SYMBOL_GET(e) XREF_##e
+
+void getLibraryJVS(library_db& lib_db)
 {
-	*db_min = &database_min;
-	*db_full = &database_full;
+	lib_db.min = &database_min;
+	lib_db.full = &database_full;
+	lib_db.xref_offset = XREF_OFFSET;
+	lib_db.xref_total = LOCAL_COUNT;
+	assert(database_min.size() + database_full.size() == LOCAL_COUNT);
 }

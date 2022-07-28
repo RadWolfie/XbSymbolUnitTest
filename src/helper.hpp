@@ -54,7 +54,8 @@ static std::string FormatTitleId(uint32_t title_id)
 }
 
 // made by ergo720
-static void PurgeBadChar(std::string &s, const std::string &illegalChars = "\\/:?\"<>|")
+static void PurgeBadChar(std::string& s,
+                         const std::string& illegalChars = "\\/:?\"<>|")
 {
 	for (auto it = s.begin(); it < s.end(); ++it) {
 		bool found = illegalChars.find(*it) != std::string::npos;
