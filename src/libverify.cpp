@@ -270,7 +270,7 @@ void missing_library_db(std::map<uint32_t, symbol_result>& list,
 		error_count++;
 		std::cout << "ERROR: Unit test is missing " << xref_entry.symbol
 		          << " (b" << std::dec << std::setfill('0') << std::setw(4)
-		          << xref_entry.build << ") symbol register!\n";
+		          << xref_entry.build << ") symbol register! addr = " << std::hex << std::setfill('0') << std::setw(8) << xref_entry.addr << "\n";
 	}
 }
 

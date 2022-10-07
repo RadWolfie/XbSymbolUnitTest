@@ -14,9 +14,14 @@ endif()
 
 include_directories("${PROJECT_SOURCE_DIR}/import/xxHash")
 
-set(XBSDB_BUILD_CLI ON)
-
-add_subdirectory("${PROJECT_SOURCE_DIR}/import/XbSymbolDatabase")
+# Check if XbSymbolDatabase library had been installed.
+find_package(libXbSymbolDatabase QUIET)
+if (NOT libXbSymbolDatabase_FOUND)
+ # Otherwise use submodule to build it.
+ set(XBSDB_BUILD_CLI ON)
+ set(XBSDB_INSTALL_LIB ON)
+ add_subdirectory("${PROJECT_SOURCE_DIR}/import/XbSymbolDatabase")
+endif()
 
 # Add source to this project's executable.
 file(GLOB_RECURSE HEADERS "src/*.hpp")
