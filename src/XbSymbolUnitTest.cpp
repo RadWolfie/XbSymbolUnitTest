@@ -16,12 +16,13 @@
 #include <string>
 #include <thread>
 
+#include <libXbSymbolDatabase.h>
+#include <xref/list_xref.h>
+
 #include "Xbe.h"
 #include "helper.hpp"
 #include "libverify.hpp"
 #include "xxhash.h"
-#include <libXbSymbolDatabase.h>
-#include <xref/list_xref.h>
 
 #define _128_MiB 0x08000000
 
@@ -179,7 +180,7 @@ int main(int argc, char** argv)
 
 	// Then check both raw and simulated do indeed have same size.
 	if (g_SymbolAddresses.size() != g_SymbolAddressesRaw.size()) {
-		std::cout << "ERROR: Registered symbols is not even.\n"
+		std::cout << "ERROR: Registered symbols are not even.\n"
 		          << "INFO: Raw xbe: " << g_SymbolAddressesRaw.size()
 		          << " - Sim xbox: " << g_SymbolAddresses.size() << "\n";
 

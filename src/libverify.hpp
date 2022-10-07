@@ -26,7 +26,7 @@
 typedef struct _lib_versions {
 	uint16_t d3d8;
 	uint16_t d3d8ltcg;
-	uint16_t d3d8x; // Do we need this?
+	uint16_t d3d8x; // TODO: Do we need this?
 	uint16_t dsound;
 	uint16_t jvs;
 	uint16_t xacteng;

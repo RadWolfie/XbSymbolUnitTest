@@ -1,9 +1,9 @@
 # CMakeList.txt : CMake project for XbSymbolUnitTest, include source and define
 # project specific logic here.
 #
-cmake_minimum_required (VERSION 3.8)
+cmake_minimum_required(VERSION 3.8)
 
-project (XbSymbolUnitTest)
+project(XbSymbolUnitTest)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 17)
@@ -15,8 +15,8 @@ endif()
 include_directories("${PROJECT_SOURCE_DIR}/import/xxHash")
 
 set(XBSDB_BUILD_CLI ON)
-add_subdirectory ("${PROJECT_SOURCE_DIR}/import/XbSymbolDatabase")
 
+add_subdirectory("${PROJECT_SOURCE_DIR}/import/XbSymbolDatabase")
 
 # Add source to this project's executable.
 file(GLOB_RECURSE HEADERS "src/*.hpp")
@@ -28,8 +28,8 @@ set(SOURCES ${SOURCES}
   "import/xxHash/xxhash.c"
 )
 
-source_group(TREE ${CMAKE_CURRENT_LIST_DIR} FILES ${HEADERS})
-source_group(TREE ${CMAKE_CURRENT_LIST_DIR} FILES ${SOURCES})
+source_group(TREE ${CMAKE_CURRENT_LIST_DIR} PREFIX "header" FILES ${HEADERS})
+source_group(TREE ${CMAKE_CURRENT_LIST_DIR} PREFIX "source" FILES ${SOURCES})
 
 add_executable(${PROJECT_NAME} ${HEADERS} ${SOURCES})
 

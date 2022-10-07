@@ -29,10 +29,6 @@
 #include "libverify.hpp"
 #include "libverify/unittest.hpp"
 
-typedef std::map<uint32_t, symbol_result>::iterator list_iterator;
-
-typedef std::vector<std::string>::iterator missing_iterator;
-
 bool verify_version_range(const std::string& symbol_str,
                           const version_ranges& version_range)
 {
@@ -335,7 +331,9 @@ void run_test_verify_symbols(lib_versions& lib_vers,
 
 	getLibraryD3D8(lib_db);
 	if (lib_vers.d3d8ltcg) {
-		run_test_verify_symbol(symbols_list, Lib_D3D8LTCG, lib_vers.d3d8ltcg, XbSymbolLib_D3D8LTCG, lib_db, full_lib_count, error_count);
+		constexpr auto XbSymbolLib_D3D8LTCG_flags =
+		    XbSymbolLib_D3D8LTCG | XbSymbolLib_D3D8;
+		run_test_verify_symbol(symbols_list, Lib_D3D8LTCG, lib_vers.d3d8ltcg, XbSymbolLib_D3D8LTCG_flags, lib_db, full_lib_count, error_count);
 	}
 	else {
 		run_test_verify_symbol(symbols_list, Lib_D3D8, lib_vers.d3d8, XbSymbolLib_D3D8, lib_db, full_lib_count, error_count);
