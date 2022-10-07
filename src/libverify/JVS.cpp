@@ -121,9 +121,10 @@ static_assert(XREF_OFFSET == 0);
 
 void getLibraryJVS(library_db& lib_db)
 {
+	lib_db.optional = nullptr;
 	lib_db.min = &database_min;
 	lib_db.full = &database_full;
 	lib_db.xref_offset = XREF_OFFSET;
 	lib_db.xref_total = LOCAL_COUNT;
-	assert(database_min.size() + database_full.size() == LOCAL_COUNT);
+	lib_db.xref_exclude = 0;
 }

@@ -64,9 +64,10 @@ static_assert(XREF_OFFSET == 0);
 
 void getLibraryXACTENG(library_db& lib_db)
 {
+	lib_db.optional = nullptr;
 	lib_db.min = nullptr; //&database_min;
 	lib_db.full = &database_full;
 	lib_db.xref_offset = XREF_OFFSET;
 	lib_db.xref_total = LOCAL_COUNT;
-	assert(database_full.size() == LOCAL_COUNT);
+	lib_db.xref_exclude = 0;
 }

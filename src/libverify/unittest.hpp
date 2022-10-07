@@ -55,8 +55,10 @@ typedef const std::map<uint32_t, const std::map<const std::string, version_range
 struct library_db {
 	const library_list* min;
 	const library_list* full;
+	const library_list* optional;
 	uint32_t xref_offset;
 	uint32_t xref_total;
+	uint32_t xref_exclude;
 };
 
 void getLibraryD3D8(library_db& lib_db);
