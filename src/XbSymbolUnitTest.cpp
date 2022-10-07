@@ -42,6 +42,7 @@ static const char* section_symbols = "Symbols";
 #define UNITTEST_FAIL_SYMBOLS_NOT_FOUND 6
 #define UNITTEST_FAIL_SYMBOLS_DIFF_SIZE 7
 #define UNITTEST_FAIL_SYMBOLS_NOT_MATCH 8
+#define UNITTEST_FAIL_DATABASE_NOT_SYNC 9
 
 void pause_for_user_input()
 {
@@ -94,6 +95,7 @@ extern int run_test_virtual(const xbe_header* pXbeHeader,
 
 int main(int argc, char** argv)
 {
+	std::setlocale(LC_ALL, "English");
 	std::string path_xbe;
 	int test_ret = UNITTEST_OK;
 	if (argc > 2) {
@@ -111,14 +113,19 @@ int main(int argc, char** argv)
 	std::cout << "Total symbols in XbSymbolDatabase: "
 	          << XbSymbolDatabase_GetTotalSymbols(XbSymbolLib_ALL) << "\n";
 
+	// Perform self test to verify all symbol registers are validated.
+	if (!run_test_verify_libraries()) {
+		// If not, do not allow to run unit test until this is resolve first.
+		std::cout << "ERROR: Databases from libXbSymbolDatabase and XbSymbolUnitTest are not in sync!\n";
+		return UNITTEST_FAIL_DATABASE_NOT_SYNC;
+	}
+
 	// Do not process xbe test verification
 	if (argc == 1) {
 		test_ret = output_result_XbSDB();
 		std::cout << "INFO: No xbe given, unit test end.\n";
 		return test_ret;
 	}
-
-	std::setlocale(LC_ALL, "English");
 
 	std::ifstream xbeFile = std::ifstream(path_xbe, std::ios::binary);
 	if (!xbeFile.is_open()) {

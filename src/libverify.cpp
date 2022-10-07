@@ -88,7 +88,8 @@ bool match_library_db(std::map<uint32_t, symbol_result>& list,
                       uint32_t xref_total,
                       const uint32_t lib_flags,
                       std::vector<std::string>& missing,
-                      unsigned& error_count)
+                      unsigned& error_count,
+                      bool bOptional = false)
 {
 	size_t lib_db_size = lib_db->size();
 	size_t found_size = 0;
@@ -102,9 +103,7 @@ bool match_library_db(std::map<uint32_t, symbol_result>& list,
 		if (xref->first < xref_offset ||
 		    xref->first >= xref_total + xref_offset) {
 			lib_db_size--;
-			error_count++;
-			std::cout << "ERROR: XReference index is not within range: "
-			          << xref->second.begin()->first << "\n";
+			// Handled inside verify_database_xref_range function.
 			continue;
 		}
 
@@ -185,11 +184,11 @@ bool match_library_db(std::map<uint32_t, symbol_result>& list,
 	}
 
 	if (found_size == 0) {
-		if (missing.empty()) {
+		if (missing.empty() && !bOptional) {
 			// TODO: Check if any symbols are below title's build version.
 			std::cout << "ERROR: Couldn't find any recognized symbols!\n";
+			return false;
 		}
-		return false;
 	}
 
 #ifdef _VERBOSE
@@ -210,6 +209,18 @@ void missing_library_db(std::map<uint32_t, symbol_result>& list,
 	for (auto&& [xref_index, xref_entry] : list) {
 
 		unsigned match_found = 0;
+		if (lib_db.optional) {
+			// If check xref register is missing
+			auto found_xref = lib_db.optional->find(xref_index);
+			if (found_xref != lib_db.optional->end()) {
+				// If check unregistered symbol is missing
+				auto found_str = found_xref->second.find(xref_entry.symbol);
+				if (found_str != found_xref->second.end()) {
+					match_found++;
+				}
+			}
+		}
+
 		if (lib_db.min) {
 			// If check xref register is missing
 			auto found_xref = lib_db.min->find(xref_index);
@@ -234,14 +245,6 @@ void missing_library_db(std::map<uint32_t, symbol_result>& list,
 			}
 		}
 
-		// If there are duplicate match, then shame on contributor for doing
-		// paste and not update new entry or making duplicate entries.
-		if (match_found == 2) {
-			error_count++;
-			std::cout << "ERROR: Duplicate symbol registers detected: "
-			          << xref_entry.symbol << "\n";
-		}
-
 		// Skip if not matched library.
 		if ((xref_entry.library_flag & lib_flags) == 0) {
 			if (match_found) {
@@ -255,7 +258,7 @@ void missing_library_db(std::map<uint32_t, symbol_result>& list,
 		// Skip if not within range
 		if (xref_index < lib_db.xref_offset ||
 		    xref_index >= lib_db.xref_total + lib_db.xref_offset) {
-			// Handled inside match_library_db function.
+			// Handled inside verify_database_xref_range function.
 			continue;
 		}
 
@@ -269,6 +272,176 @@ void missing_library_db(std::map<uint32_t, symbol_result>& list,
 		          << " (b" << std::dec << std::setfill('0') << std::setw(4)
 		          << xref_entry.build << ") symbol register!\n";
 	}
+}
+
+void verify_database_duplicate_compare(const char* lib_str,
+                                       const uint32_t xref_index,
+                                       const std::string xref_symbol,
+                                       const library_list* db1,
+                                       const library_list* db2,
+                                       unsigned& error_count)
+{
+	unsigned match_found = 0;
+
+	if (db1) {
+		// If check xref register exist
+		const auto& lib_db_scan = *db1;
+		auto found_xref = lib_db_scan.find(xref_index);
+		if (found_xref != lib_db_scan.end()) {
+			match_found++;
+		}
+	}
+
+	if (db2) {
+		// If check xref register exist
+		const auto& lib_db_scan = *db2;
+		auto found_xref = lib_db_scan.find(xref_index);
+		if (found_xref != lib_db_scan.end()) {
+			match_found++;
+		}
+	}
+
+	// If there are duplicate match, then shame on contributor for doing
+	// paste and not update new entry or making duplicate entries.
+	if (match_found) {
+		error_count++;
+
+		std::cout << "ERROR: Duplicate symbol registers detected: "
+		          << xref_symbol.c_str() << " (index: " << xref_index << ")"
+		          << "\n";
+	}
+}
+
+// Make sure there are no duplicate xref entries from same library.
+void verify_database_duplicate(const char* lib_str,
+                               const library_db& lib_db,
+                               unsigned& error_count)
+{
+	if (lib_db.optional) {
+		for (auto&& [xref_index, xref_entry] : *lib_db.optional) {
+			unsigned match_found = 0;
+			const std::string xref_symbol = xref_entry.begin()->first;
+
+			verify_database_duplicate_compare(lib_str, xref_index, xref_symbol, lib_db.min, lib_db.full, error_count);
+		}
+	}
+	if (lib_db.min) {
+		for (auto&& [xref_index, xref_entry] : *lib_db.min) {
+			unsigned match_found = 0;
+			const std::string xref_symbol = xref_entry.begin()->first;
+
+			verify_database_duplicate_compare(lib_str, xref_index, xref_symbol, nullptr, lib_db.full, error_count);
+		}
+	}
+
+	// There's no need to verify lib_db.full with previous databases.
+}
+
+void verify_database_xref_range_compare(const library_list* lib_list,
+                       const unsigned xref_min,
+                       const unsigned xref_max,
+                       unsigned& error_count)
+{
+	if (lib_list) {
+		for (auto&& [xref_index, xref_entry] : *lib_list) {
+			// Report if not within library's xref range
+			if (xref_index < xref_min ||
+			    xref_index >= xref_max) {
+				error_count++;
+				std::cout << "ERROR: Reference index is not within range: "
+				          << xref_entry.begin()->first << "\n";
+			}
+		}
+	}
+}
+
+// Check each xref indexes are within library's xref range.
+void verify_database_xref_range(const char* lib_str,
+                                const library_db& lib_db,
+                                unsigned& error_count)
+{
+	auto xref_min = lib_db.xref_offset;
+	auto xref_max = lib_db.xref_total + xref_min;
+
+	verify_database_xref_range_compare(lib_db.optional, xref_min, xref_max, error_count);
+	verify_database_xref_range_compare(lib_db.min, xref_min, xref_max, error_count);
+	verify_database_xref_range_compare(lib_db.full, xref_min, xref_max, error_count);
+}
+
+void run_test_verify_library(const char* lib_str,
+                              const library_db& lib_db,
+                              unsigned& error_count)
+{
+	unsigned error_count_local = 0;
+	verify_database_duplicate(lib_str, lib_db, error_count_local);
+	verify_database_xref_range(lib_str, lib_db, error_count_local);
+
+	// Get library's databases size.
+	size_t libs_size = 0;
+	if (lib_db.optional) {
+		libs_size += lib_db.optional->size();
+	}
+	if (lib_db.min) {
+		libs_size += lib_db.min->size();
+	}
+	if (lib_db.full) {
+		libs_size += lib_db.full->size();
+	}
+	// Make sure both libXbSymbolDatabase and unit test's databases has correct size.
+	if ((lib_db.xref_total - lib_db.xref_exclude) != libs_size) {
+		error_count_local++;
+		std::cout << "ERROR: " << lib_str << " (size: "
+		          << libs_size
+		          << ") database is not in sync with libXbSymbolDatabase's (size: "
+		          << (lib_db.xref_total - lib_db.xref_exclude)
+		          << ")!\n";
+	}
+
+	// Make verbose for exclude count.
+	if (lib_db.xref_exclude) {
+		std::cout << "DEBUG: " << lib_str << " has exclude " << lib_db.xref_exclude
+		          << " xref(s).\n\n";
+	}
+	else if (error_count_local) {
+		std::cout << "\n";
+	}
+
+	error_count += error_count_local;
+}
+
+bool run_test_verify_libraries()
+{
+	unsigned error_count = 0;
+	library_db lib_db;
+	getLibraryD3D8(lib_db);
+	run_test_verify_library(Lib_D3D8, lib_db, error_count);
+
+	getLibraryDSOUND(lib_db);
+	run_test_verify_library(Lib_DSOUND, lib_db, error_count);
+
+	getLibraryJVS(lib_db);
+	run_test_verify_library(Lib_JVS, lib_db, error_count);
+
+	getLibraryXACTENG(lib_db);
+	run_test_verify_library(Lib_XACTENG, lib_db, error_count);
+
+	getLibraryXAPILIB(lib_db);
+	run_test_verify_library(Lib_XAPILIB, lib_db, error_count);
+
+	getLibraryXGRAPHIC(lib_db);
+	run_test_verify_library(Lib_XGRAPHC, lib_db, error_count);
+
+	getLibraryXNET(lib_db);
+	run_test_verify_library(Lib_XNET, lib_db, error_count);
+
+	getLibraryXONLINE(lib_db);
+	run_test_verify_library(Lib_XONLINE, lib_db, error_count);
+
+	if (error_count) {
+		return false;
+	}
+
+	return true;
 }
 
 void run_test_verify_symbol(std::map<uint32_t, symbol_result>& symbols_list,
@@ -288,6 +461,27 @@ void run_test_verify_symbol(std::map<uint32_t, symbol_result>& symbols_list,
 	}
 
 	missing_library_db(symbols_list, lib_db, lib_flags, error_count);
+
+	if (lib_db.optional != nullptr) {
+		symbols_missing.clear();
+		unsigned error_count_local = 0;
+		is_match = match_library_db(symbols_list, lib_ver, lib_db.optional, lib_db.xref_offset, lib_db.xref_total, lib_flags, symbols_missing, error_count_local, true);
+
+		if (!is_match) {
+			for (auto& symbol : symbols_missing) {
+				std::cout << "INFO: Title is missing one of " << symbol << "\n";
+			}
+			if (symbols_missing.empty()) {
+				std::cout << "INFO: " << lib_str << " optional = NONE\n\n";
+			}
+			else {
+				std::cout << "INFO: " << lib_str << " optional = PARTIAL\n\n";
+			}
+		}
+		else {
+			std::cout << "INFO: " << lib_str << " optional = PASS\n";
+		}
+	}
 
 	if (lib_db.min != nullptr) {
 

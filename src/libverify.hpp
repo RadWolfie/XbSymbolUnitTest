@@ -49,6 +49,9 @@ constexpr bool operator==(const symbol_result &lhs,
 	return lhs.addr == rhs.addr && lhs.build == rhs.build && lhs.library_flag == rhs.library_flag && lhs.symbol == rhs.symbol;
 }
 
+// Perform self test for all libraries' symbol registers are in sync with libXbSymbolDatabase.
+bool run_test_verify_libraries();
+
 void run_test_verify_symbols(lib_versions &lib_ver,
                              std::map<uint32_t, symbol_result> &symbols_list,
                              unsigned &full_lib_count, unsigned &error_count);
