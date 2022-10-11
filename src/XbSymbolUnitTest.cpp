@@ -426,7 +426,7 @@ bool VerifyXbeIsBuiltWithXDK(const xbe_header* pXbeHeader,
 	          << "\n";
 
 	// Hash the loaded XBE's header, use it as a filename
-	uint32_t uiHash = XXH32((void*)pXbeHeader, sizeof(xbe_header), 0);
+	uint64_t uiHash = XXH3_64bits((void*)pXbeHeader, sizeof(xbe_header));
 	std::cout << "Xbe header hash       : " << std::hex << uiHash << "\n";
 	std::cout.flags(cout_fmt);
 
