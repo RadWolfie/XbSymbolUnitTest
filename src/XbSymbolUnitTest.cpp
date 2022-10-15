@@ -23,6 +23,7 @@
 #include "helper.hpp"
 #include "libverify.hpp"
 #include "xxhash.h"
+#include "util/cliConfig.hpp"
 
 #define _128_MiB 0x08000000
 
@@ -93,18 +94,36 @@ extern int run_test_raw(const xbe_header* pXbeHeader);
 extern int run_test_virtual(const xbe_header* pXbeHeader,
                             const uint8_t* xbe_data);
 
+// Add arguments here that are valid to use within application.
+cli_config::argtype cliArgValidate(const std::string arg)
+{
+	using namespace cli_config;
+
+	if (arg == "out") {
+		return argtype::pair;
+	}
+	else if (arg == "f") {
+		return argtype::single;
+	}
+	return argtype::unknown;
+}
+
+
 int main(int argc, char** argv)
 {
 	std::setlocale(LC_ALL, "English");
 	std::string path_xbe;
 	int test_ret = UNITTEST_OK;
-	if (argc > 2) {
+
+	cli_config::SetArgTypeValidateCallback(cliArgValidate);
+
+	// Check for valid args then make valid key/value binds.
+	if (!cli_config::GenConfig(argv, argc)) {
 		return invalid_argument(argc, argv);
 	}
 
-	if (argc == 2) {
-		path_xbe = argv[1];
-	}
+	// Get xbe's file path even if it's not given.
+	cli_config::GetValue(cli_config::filepath, &path_xbe);
 
 	XbSymbolDatabase_SetOutputVerbosity(XB_OUTPUT_MESSAGE_DEBUG);
 	XbSymbolDatabase_SetOutputMessage(EmuOutputMessage);
@@ -120,8 +139,8 @@ int main(int argc, char** argv)
 		return UNITTEST_FAIL_DATABASE_NOT_SYNC;
 	}
 
-	// Do not process xbe test verification
-	if (argc == 1) {
+	// Do not process xbe test verification if file path is not given.
+	if (path_xbe.empty()) {
 		test_ret = output_result_XbSDB();
 		std::cout << "INFO: No xbe given, unit test end.\n";
 		return test_ret;
