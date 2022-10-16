@@ -119,11 +119,16 @@ static_assert(XREF_OFFSET == 0);
 #undef XREF_SYMBOL_GET
 #define XREF_SYMBOL_GET(e) XREF_##e
 
+static const subcategory_db jvs_db = {
+	.name = "JVS",
+	.optional = nullptr,
+	.min = &database_min,
+	.full = &database_full,
+};
+
 void getLibraryJVS(library_db& lib_db)
 {
-	lib_db.optional = nullptr;
-	lib_db.min = &database_min;
-	lib_db.full = &database_full;
+	lib_db.subcategories = { &jvs_db };
 	lib_db.xref_offset = XREF_OFFSET;
 	lib_db.xref_total = LOCAL_COUNT;
 	lib_db.xref_exclude = 0;

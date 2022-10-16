@@ -152,11 +152,16 @@ static_assert(XREF_OFFSET == 0);
 #undef XREF_SYMBOL_GET
 #define XREF_SYMBOL_GET(e) XREF_##e
 
+static const subcategory_db xapilib_db = {
+	.name = "XAPILIB",
+	.optional = &database_optional,
+	.min = nullptr, //&database_min,
+	.full = &database_full,
+};
+
 void getLibraryXAPILIB(library_db& lib_db)
 {
-	lib_db.optional = &database_optional;
-	lib_db.min = nullptr; //&database_min;
-	lib_db.full = &database_full;
+	lib_db.subcategories = { &xapilib_db };
 	lib_db.xref_offset = XREF_OFFSET;
 	lib_db.xref_total = LOCAL_COUNT;
 	lib_db.xref_exclude = 0;

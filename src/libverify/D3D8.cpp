@@ -414,11 +414,16 @@ static_assert(XREF_OFFSET == 0);
 #undef XREF_SYMBOL_GET
 #define XREF_SYMBOL_GET(e) XREF_##e
 
+static const subcategory_db d3d8_db = {
+	.name = "D3D8",
+	.optional = nullptr,
+	.min = nullptr,
+	.full = &database_full,
+};
+
 void getLibraryD3D8(library_db& lib_db)
 {
-	lib_db.min = nullptr; //&database_min;
-	lib_db.full = &database_full;
-	lib_db.optional = nullptr;
+	lib_db.subcategories = { &d3d8_db };
 	lib_db.xref_offset = XREF_OFFSET;
 	lib_db.xref_total = LOCAL_COUNT;
 	// TODO: database is incomplete + 1 internal reference need to be exclude.

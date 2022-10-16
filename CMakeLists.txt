@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.8)
 project(XbSymbolUnitTest)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   add_compile_definitions(_CRT_SECURE_NO_WARNINGS)

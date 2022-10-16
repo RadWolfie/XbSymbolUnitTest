@@ -421,11 +421,17 @@ static_assert(XREF_OFFSET == 0);
 #undef XREF_SYMBOL_GET
 #define XREF_SYMBOL_GET(e) XREF_##e
 
+static const subcategory_db dsound_db = {
+	.name = "DSOUND",
+	.optional = nullptr,
+	.min = &database_min,
+	.full = &database_full,
+};
+
 void getLibraryDSOUND(library_db& lib_db)
 {
-	lib_db.optional = nullptr;
-	lib_db.min = &database_min;
-	lib_db.full = &database_full;
+	lib_db.subcategories = { &dsound_db };
+	// TODO: Extract DirectSoundStream, DirectSoundBuffer, and DirectSound3DCalculator into their own db.
 	lib_db.xref_offset = XREF_OFFSET;
 	lib_db.xref_total = LOCAL_COUNT;
 	lib_db.xref_exclude = 2; // 2 symbols are not output internally

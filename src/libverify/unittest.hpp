@@ -23,6 +23,7 @@
 #include <map>
 #include <stdint.h>
 #include <string>
+#include <vector>
 
 typedef struct _version_ranges {
 	uint16_t intro_start;
@@ -52,13 +53,18 @@ typedef struct _version_ranges {
 typedef const std::map<uint32_t, const std::map<const std::string, version_ranges>>
     library_list;
 
+struct subcategory_db {
+	std::string name;
+	const library_list* optional = nullptr;
+	const library_list* min = nullptr;
+	const library_list* full = nullptr;
+};
+
 struct library_db {
-	const library_list* min;
-	const library_list* full;
-	const library_list* optional;
-	uint32_t xref_offset;
-	uint32_t xref_total;
-	uint32_t xref_exclude;
+	std::vector<const subcategory_db*> subcategories;
+	uint32_t xref_offset = 0;
+	uint32_t xref_total = 0;
+	uint32_t xref_exclude = 0;
 };
 
 void getLibraryD3D8(library_db& lib_db);
