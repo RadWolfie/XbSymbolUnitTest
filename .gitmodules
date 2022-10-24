@@ -3,7 +3,7 @@
 	url = https://github.com/Cxbx-Reloaded/XbSymbolDatabase.git
 [submodule "import/simpleini"]
 	path = import/simpleini
-	url = https://github.com/brofield/simpleini
+	url = https://github.com/brofield/simpleini.git
 [submodule "import/xxHash"]
 	path = import/xxHash
 	url = https://github.com/Cyan4973/xxHash.git

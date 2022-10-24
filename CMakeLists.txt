@@ -14,6 +14,8 @@ endif()
 
 include_directories("${PROJECT_SOURCE_DIR}/import/xxHash")
 
+include_directories("${PROJECT_SOURCE_DIR}/import/simpleini")
+
 # Check if XbSymbolDatabase library had been installed.
 find_package(libXbSymbolDatabase QUIET)
 if (NOT libXbSymbolDatabase_FOUND)
