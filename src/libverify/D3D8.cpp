@@ -415,7 +415,7 @@ static_assert(XREF_OFFSET == 0);
 #define XREF_SYMBOL_GET(e) XREF_##e
 
 static const subcategory_db d3d8_db = {
-	.name = "D3D8",
+	.name = "general",
 	.optional = nullptr,
 	.min = nullptr,
 	.full = &database_full,

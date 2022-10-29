@@ -120,7 +120,7 @@ static_assert(XREF_OFFSET == 0);
 #define XREF_SYMBOL_GET(e) XREF_##e
 
 static const subcategory_db jvs_db = {
-	.name = "JVS",
+	.name = "general",
 	.optional = nullptr,
 	.min = &database_min,
 	.full = &database_full,

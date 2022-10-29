@@ -50,7 +50,7 @@ static_assert(XREF_OFFSET == 0);
 #define XREF_SYMBOL_GET(e) XREF_##e
 
 static const subcategory_db xonline_db = {
-	.name = "XONLINE",
+	.name = "general",
 	.optional = nullptr,
 	.min = nullptr, //&database_min,
 	.full = &database_full,

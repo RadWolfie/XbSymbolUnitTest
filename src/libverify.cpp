@@ -209,38 +209,40 @@ void missing_library_db(std::map<uint32_t, symbol_result>& list,
 	for (auto&& [xref_index, xref_entry] : list) {
 
 		unsigned match_found = 0;
-		if (lib_db.optional) {
-			// If check xref register is missing
-			auto found_xref = lib_db.optional->find(xref_index);
-			if (found_xref != lib_db.optional->end()) {
-				// If check unregistered symbol is missing
-				auto found_str = found_xref->second.find(xref_entry.symbol);
-				if (found_str != found_xref->second.end()) {
-					match_found++;
+		for (const auto& subcategory : lib_db.subcategories) {
+			if (subcategory->optional) {
+				// If check xref register is missing
+				auto found_xref = subcategory->optional->find(xref_index);
+				if (found_xref != subcategory->optional->end()) {
+					// If check unregistered symbol is missing
+					auto found_str = found_xref->second.find(xref_entry.symbol);
+					if (found_str != found_xref->second.end()) {
+						match_found++;
+					}
 				}
 			}
-		}
 
-		if (lib_db.min) {
-			// If check xref register is missing
-			auto found_xref = lib_db.min->find(xref_index);
-			if (found_xref != lib_db.min->end()) {
-				// If check unregistered symbol is missing
-				auto found_str = found_xref->second.find(xref_entry.symbol);
-				if (found_str != found_xref->second.end()) {
-					match_found++;
+			if (subcategory->min) {
+				// If check xref register is missing
+				auto found_xref = subcategory->min->find(xref_index);
+				if (found_xref != subcategory->min->end()) {
+					// If check unregistered symbol is missing
+					auto found_str = found_xref->second.find(xref_entry.symbol);
+					if (found_str != found_xref->second.end()) {
+						match_found++;
+					}
 				}
 			}
-		}
 
-		if (lib_db.full) {
-			// If check xref register is missing
-			auto found_xref = lib_db.full->find(xref_index);
-			if (found_xref != lib_db.full->end()) {
-				// If check symbol register is missing
-				auto found_str = found_xref->second.find(xref_entry.symbol);
-				if (found_str != found_xref->second.end()) {
-					match_found++;
+			if (subcategory->full) {
+				// If check xref register is missing
+				auto found_xref = subcategory->full->find(xref_index);
+				if (found_xref != subcategory->full->end()) {
+					// If check symbol register is missing
+					auto found_str = found_xref->second.find(xref_entry.symbol);
+					if (found_str != found_xref->second.end()) {
+						match_found++;
+					}
 				}
 			}
 		}
@@ -279,6 +281,7 @@ void verify_database_duplicate_compare(const char* lib_str,
                                        const std::string xref_symbol,
                                        const library_list* db1,
                                        const library_list* db2,
+                                       const library_list* db3,
                                        unsigned& error_count)
 {
 	unsigned match_found = 0;
@@ -301,6 +304,15 @@ void verify_database_duplicate_compare(const char* lib_str,
 		}
 	}
 
+	if (db3) {
+		// If check xref register exist
+		const auto& lib_db_scan = *db3;
+		auto found_xref = lib_db_scan.find(xref_index);
+		if (found_xref != lib_db_scan.end()) {
+			match_found++;
+		}
+	}
+
 	// If there are duplicate match, then shame on contributor for doing
 	// paste and not update new entry or making duplicate entries.
 	if (match_found) {
@@ -317,24 +329,60 @@ void verify_database_duplicate(const char* lib_str,
                                const library_db& lib_db,
                                unsigned& error_count)
 {
-	if (lib_db.optional) {
-		for (auto&& [xref_index, xref_entry] : *lib_db.optional) {
-			unsigned match_found = 0;
-			const std::string xref_symbol = xref_entry.begin()->first;
+	for (const auto& subcategory_i : lib_db.subcategories) {
 
-			verify_database_duplicate_compare(lib_str, xref_index, xref_symbol, lib_db.min, lib_db.full, error_count);
+		bool bFound = false;
+		for (const auto& subcategory_ii : lib_db.subcategories) {
+			// Skip if iterators aren't matched
+			if (subcategory_i == subcategory_ii) {
+				bFound = true;
+			}
+			if (!bFound) {
+				continue;
+			}
+			// Start inspection once both iterators are matched and check second iterator.
+			auto optional = subcategory_ii->optional;
+			if (subcategory_i == subcategory_ii) {
+				optional = nullptr;
+			}
+			if (subcategory_i->optional) {
+				for (auto&& [xref_index, xref_entry] : *subcategory_i->optional) {
+					unsigned match_found = 0;
+					const std::string xref_symbol = xref_entry.begin()->first;
+
+					verify_database_duplicate_compare(lib_str, xref_index, xref_symbol, optional, subcategory_ii->min, subcategory_ii->full, error_count);
+				}
+			}
+
+			auto min = subcategory_ii->min;
+			if (subcategory_i == subcategory_ii) {
+				min = nullptr;
+			}
+			if (subcategory_i->min) {
+				for (auto&& [xref_index, xref_entry] : *subcategory_i->min) {
+					unsigned match_found = 0;
+					const std::string xref_symbol = xref_entry.begin()->first;
+
+					verify_database_duplicate_compare(lib_str, xref_index, xref_symbol, optional, min, subcategory_ii->full, error_count);
+				}
+			}
+
+			auto full = subcategory_ii->full;
+			if (subcategory_i == subcategory_ii) {
+				full = nullptr;
+			}
+			if (subcategory_i->full) {
+				for (auto&& [xref_index, xref_entry] : *subcategory_i->full) {
+					unsigned match_found = 0;
+					const std::string xref_symbol = xref_entry.begin()->first;
+
+					verify_database_duplicate_compare(lib_str, xref_index, xref_symbol, optional, min, full, error_count);
+				}
+			}
+			// There's no need to verify subcategory->full with previous databases.
 		}
 	}
-	if (lib_db.min) {
-		for (auto&& [xref_index, xref_entry] : *lib_db.min) {
-			unsigned match_found = 0;
-			const std::string xref_symbol = xref_entry.begin()->first;
 
-			verify_database_duplicate_compare(lib_str, xref_index, xref_symbol, nullptr, lib_db.full, error_count);
-		}
-	}
-
-	// There's no need to verify lib_db.full with previous databases.
 }
 
 void verify_database_xref_range_compare(const library_list* lib_list,
@@ -363,9 +411,11 @@ void verify_database_xref_range(const char* lib_str,
 	auto xref_min = lib_db.xref_offset;
 	auto xref_max = lib_db.xref_total + xref_min;
 
-	verify_database_xref_range_compare(lib_db.optional, xref_min, xref_max, error_count);
-	verify_database_xref_range_compare(lib_db.min, xref_min, xref_max, error_count);
-	verify_database_xref_range_compare(lib_db.full, xref_min, xref_max, error_count);
+	for (const auto& subcategory : lib_db.subcategories) {
+		verify_database_xref_range_compare(subcategory->optional, xref_min, xref_max, error_count);
+		verify_database_xref_range_compare(subcategory->min, xref_min, xref_max, error_count);
+		verify_database_xref_range_compare(subcategory->full, xref_min, xref_max, error_count);
+	}
 }
 
 void run_test_verify_library(const char* lib_str,
@@ -377,21 +427,23 @@ void run_test_verify_library(const char* lib_str,
 	verify_database_xref_range(lib_str, lib_db, error_count_local);
 
 	// Get library's databases size.
-	size_t libs_size = 0;
-	if (lib_db.optional) {
-		libs_size += lib_db.optional->size();
-	}
-	if (lib_db.min) {
-		libs_size += lib_db.min->size();
-	}
-	if (lib_db.full) {
-		libs_size += lib_db.full->size();
+	size_t lib_size = 0;
+	for (const auto& subcategory : lib_db.subcategories) {
+		if (subcategory->optional) {
+			lib_size += subcategory->optional->size();
+		}
+		if (subcategory->min) {
+			lib_size += subcategory->min->size();
+		}
+		if (subcategory->full) {
+			lib_size += subcategory->full->size();
+		}
 	}
 	// Make sure both libXbSymbolDatabase and unit test's databases has correct size.
-	if ((lib_db.xref_total - lib_db.xref_exclude) != libs_size) {
+	if ((lib_db.xref_total - lib_db.xref_exclude) != lib_size) {
 		error_count_local++;
 		std::cout << "ERROR: " << lib_str << " (size: "
-		          << libs_size
+		          << lib_size
 		          << ") database is not in sync with libXbSymbolDatabase's (size: "
 		          << (lib_db.xref_total - lib_db.xref_exclude)
 		          << ")!\n";
@@ -462,58 +514,66 @@ void run_test_verify_symbol(std::map<uint32_t, symbol_result>& symbols_list,
 
 	missing_library_db(symbols_list, lib_db, lib_flags, error_count);
 
-	if (lib_db.optional != nullptr) {
-		symbols_missing.clear();
-		unsigned error_count_local = 0;
-		is_match = match_library_db(symbols_list, lib_ver, lib_db.optional, lib_db.xref_offset, lib_db.xref_total, lib_flags, symbols_missing, error_count_local, true);
+	if (lib_db.subcategories.empty()) {
+		error_count++;
+		std::cout << "ERROR: " << lib_str << "'s database does not have any subcategories, skipping...\n\n";
+		return;
+	}
 
-		if (!is_match) {
-			for (auto& symbol : symbols_missing) {
-				std::cout << "INFO: Title is missing one of " << symbol << "\n";
-			}
-			if (symbols_missing.empty()) {
-				std::cout << "INFO: " << lib_str << " optional = NONE\n\n";
+	for (const auto& subcategory : lib_db.subcategories) {
+		if (subcategory->optional != nullptr) {
+			symbols_missing.clear();
+			unsigned error_count_local = 0;
+			is_match = match_library_db(symbols_list, lib_ver, subcategory->optional, lib_db.xref_offset, lib_db.xref_total, lib_flags, symbols_missing, error_count_local, true);
+
+			if (!is_match) {
+				for (auto& symbol : symbols_missing) {
+					std::cout << "INFO: Title is missing one of " << symbol << "\n";
+				}
+				if (symbols_missing.empty()) {
+					std::cout << "INFO: " << lib_str << " (" << subcategory->name << ") optional = NONE\n\n";
+				}
+				else {
+					std::cout << "INFO: " << lib_str << " (" << subcategory->name << ") optional = PARTIAL\n\n";
+				}
 			}
 			else {
-				std::cout << "INFO: " << lib_str << " optional = PARTIAL\n\n";
+				std::cout << "INFO: " << lib_str << " (" << subcategory->name << ") optional = PASS\n";
 			}
 		}
-		else {
-			std::cout << "INFO: " << lib_str << " optional = PASS\n";
+
+		if (subcategory->min != nullptr) {
+
+			symbols_missing.clear();
+			is_match = match_library_db(symbols_list, lib_ver, subcategory->min, lib_db.xref_offset, lib_db.xref_total, lib_flags, symbols_missing, error_count);
+
+			if (!is_match) {
+				for (auto& symbol : symbols_missing) {
+					std::cout << "INFO: Title is missing one of " << symbol << "\n";
+				}
+				std::cout << "INFO: " << lib_str << " (" << subcategory->name << ") min = FAIL\n\n";
+				continue;
+			}
+			std::cout << "INFO: " << lib_str << " (" << subcategory->name << ") min = PASS\n";
 		}
-	}
 
-	if (lib_db.min != nullptr) {
-
+		if (subcategory->full == nullptr) {
+			std::cout << "WARN: " << lib_str << " (" << subcategory->name << ") db is missing, skipping...\n\n";
+			continue;
+		}
 		symbols_missing.clear();
-		is_match = match_library_db(symbols_list, lib_ver, lib_db.min, lib_db.xref_offset, lib_db.xref_total, lib_flags, symbols_missing, error_count);
+		is_match = match_library_db(symbols_list, lib_ver, subcategory->full, lib_db.xref_offset, lib_db.xref_total, lib_flags, symbols_missing, error_count);
 
 		if (!is_match) {
 			for (auto& symbol : symbols_missing) {
 				std::cout << "INFO: Title is missing one of " << symbol << "\n";
 			}
-			std::cout << "INFO: " << lib_str << " min = FAIL\n\n";
-			return;
+			std::cout << "INFO: " << lib_str << " (" << subcategory->name << ") full = FAIL\n\n";
+			continue;
 		}
-		std::cout << "INFO: " << lib_str << " min = PASS\n";
+		full_lib_count++;
+		std::cout << "INFO: " << lib_str << " (" << subcategory->name << ") full = PASS\n\n";
 	}
-
-	if (lib_db.full == nullptr) {
-		std::cout << "WARN: " << lib_str << " db is missing, skipping...\n\n";
-		return;
-	}
-	symbols_missing.clear();
-	is_match = match_library_db(symbols_list, lib_ver, lib_db.full, lib_db.xref_offset, lib_db.xref_total, lib_flags, symbols_missing, error_count);
-
-	if (!is_match) {
-		for (auto& symbol : symbols_missing) {
-			std::cout << "INFO: Title is missing one of " << symbol << "\n";
-		}
-		std::cout << "INFO: " << lib_str << " full = FAIL\n\n";
-		return;
-	}
-	full_lib_count++;
-	std::cout << "INFO: " << lib_str << " full = PASS\n\n";
 }
 
 void run_test_verify_symbols(lib_versions& lib_vers,

@@ -63,7 +63,7 @@ static_assert(XREF_OFFSET == 0);
 #define XREF_SYMBOL_GET(e) XREF_##e
 
 static const subcategory_db xacteng_db = {
-	.name = "XACTENG",
+	.name = "general",
 	.optional = nullptr,
 	.min = nullptr, //&database_min,
 	.full = &database_full,

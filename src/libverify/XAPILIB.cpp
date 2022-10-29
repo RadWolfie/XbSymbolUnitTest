@@ -30,12 +30,6 @@ static const library_list database_optional = {
 	REGISTER_SYMBOL_INLINE(g_DeviceType_Gamepad, VER_RANGE(0, VER_MAX, VER_NONE, VER_NONE)),
 	REGISTER_SYMBOL_INLINE(g_DeviceType_IRDongle, VER_RANGE(0, VER_MAX, VER_NONE, VER_NONE)),
 	REGISTER_SYMBOL_INLINE(g_DeviceType_Keyboard, VER_RANGE(0, VER_MAX, VER_NONE, VER_NONE)),
-	REGISTER_SYMBOL_INLINE(g_DeviceType_MU, VER_RANGE(0, VER_MAX, VER_NONE, VER_NONE)),
-	REGISTER_SYMBOL_INLINE(g_XapiAltLett_MU, VER_RANGE(0, VER_MAX, VER_NONE, VER_NONE)),
-	REGISTER_SYMBOL_INLINE(g_XapiMountedMUs, VER_RANGE(0, VER_MAX, VER_NONE, VER_NONE)),
-
-	// With xrefs dependency (order)
-	REGISTER_SYMBOL_INLINE(XMUWriteNameToDriveLetter, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)), // So far is only found in dashboard
 };
 
 static const library_list database_min = {};
@@ -92,7 +86,6 @@ static const library_list database_full = {
 	REGISTER_SYMBOL_INLINE_XAPI(GetTimeZoneInformation, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
 	REGISTER_SYMBOL_INLINE_XAPI(GetTypeInformation_4, VER_RANGE(4242, VER_MAX, VER_NONE, VER_NONE)),
 	REGISTER_SYMBOL_INLINE_XAPI(GetTypeInformation_8, VER_RANGE(4242, VER_MAX, VER_NONE, VER_NONE)),
-	REGISTER_SYMBOL_INLINE(MU_Init, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
 	REGISTER_SYMBOL_INLINE_XAPI(OutputDebugStringA, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
 	REGISTER_SYMBOL_INLINE_XAPI(OutputDebugStringW, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
 	REGISTER_SYMBOL_INLINE_XAPI(mainCRTStartup, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
@@ -121,19 +114,38 @@ static const library_list database_full = {
 	REGISTER_SYMBOL_INLINE(XInputSetLightgunCalibration, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
 	REGISTER_SYMBOL_INLINE(XInputSetState, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
 	REGISTER_SYMBOL_INLINE(XMountAlternateTitleA, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(XMountUtilityDrive, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(XRegisterThreadNotifyRoutine, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(XSetProcessQuantumLength, VER_RANGE(4134, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(XapiFiberStartup, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE_XAPI(timeKillEvent, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE_XAPI(timeSetEvent, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+};
+
+static const library_list database_mu_optional = {
+
+	// derived xrefs
+	REGISTER_SYMBOL_INLINE(g_DeviceType_MU, VER_RANGE(0, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(g_XapiAltLett_MU, VER_RANGE(0, VER_MAX, VER_NONE, VER_NONE)),
+	REGISTER_SYMBOL_INLINE(g_XapiMountedMUs, VER_RANGE(0, VER_MAX, VER_NONE, VER_NONE)),
+
+	// With xrefs dependency (order)
+	REGISTER_SYMBOL_INLINE(XMUWriteNameToDriveLetter, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)), // So far is only found in dashboard
+};
+
+static const library_list database_mu_full = {
+
+	// OOVPA sigs
+
+	// With xrefs dependency (order)
+	REGISTER_SYMBOL_INLINE(MU_Init, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
 	REGISTER_SYMBOL_INLINE(XMountMUA, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
 	REGISTER_SYMBOL_INLINE(XMountMURootA, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
-	REGISTER_SYMBOL_INLINE(XMountUtilityDrive, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
 	REGISTER_SYMBOL_INLINE(XMUNameFromDriveLetter, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
 	REGISTER_SYMBOL_INLINE(XMUPortFromDriveLetterA, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
 	REGISTER_SYMBOL_INLINE(XMUSlotFromDriveLetterA, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
 	REGISTER_SYMBOL_INLINE(XReadMUMetaData, VER_RANGE(4242, VER_MAX, VER_NONE, VER_NONE)),
-	REGISTER_SYMBOL_INLINE(XRegisterThreadNotifyRoutine, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
-	REGISTER_SYMBOL_INLINE(XSetProcessQuantumLength, VER_RANGE(4134, VER_MAX, VER_NONE, VER_NONE)),
 	REGISTER_SYMBOL_INLINE(XUnmountMU, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
-	REGISTER_SYMBOL_INLINE(XapiFiberStartup, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
-	REGISTER_SYMBOL_INLINE_XAPI(timeKillEvent, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
-	REGISTER_SYMBOL_INLINE_XAPI(timeSetEvent, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
 };
 
 enum LOCAL_XREFS {
@@ -153,15 +165,22 @@ static_assert(XREF_OFFSET == 0);
 #define XREF_SYMBOL_GET(e) XREF_##e
 
 static const subcategory_db xapilib_db = {
-	.name = "XAPILIB",
+	.name = "general",
 	.optional = &database_optional,
 	.min = nullptr, //&database_min,
 	.full = &database_full,
 };
 
+static const subcategory_db mu_db = {
+	.name = "Memory Unit",
+	.optional = &database_mu_optional,
+	.min = nullptr, //&database_min,
+	.full = &database_mu_full,
+};
+
 void getLibraryXAPILIB(library_db& lib_db)
 {
-	lib_db.subcategories = { &xapilib_db };
+	lib_db.subcategories = { &xapilib_db , &mu_db };
 	lib_db.xref_offset = XREF_OFFSET;
 	lib_db.xref_total = LOCAL_COUNT;
 	lib_db.xref_exclude = 0;

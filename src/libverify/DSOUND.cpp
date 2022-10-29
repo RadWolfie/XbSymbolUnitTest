@@ -422,7 +422,7 @@ static_assert(XREF_OFFSET == 0);
 #define XREF_SYMBOL_GET(e) XREF_##e
 
 static const subcategory_db dsound_db = {
-	.name = "DSOUND",
+	.name = "general",
 	.optional = nullptr,
 	.min = &database_min,
 	.full = &database_full,
