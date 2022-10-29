@@ -31,7 +31,6 @@
 #include "libverify.hpp"
 #include "libverify/unittest.hpp"
 
-static const std::string results_str = "results";
 static const std::string pass_str = "PASS";
 static const std::string partial_str = "PARTIAL";
 static const std::string none_str = "NONE";

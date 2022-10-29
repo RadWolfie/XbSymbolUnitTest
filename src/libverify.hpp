@@ -56,6 +56,9 @@ void run_test_verify_symbols(lib_versions &lib_ver,
                              std::map<uint32_t, symbol_result> &symbols_list,
                              unsigned &full_lib_count, size_t &error_count);
 
+
+static const std::string results_str = "results";
+
 template<bool doCache>
 void Generic_OutputMessage(xb_output_message mFlag, const char* section, const std::string& message);
 

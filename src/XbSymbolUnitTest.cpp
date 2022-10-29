@@ -327,6 +327,9 @@ int main(int argc, char** argv)
 		return UNITTEST_FAIL_INVALID_XBE;
 	}
 
+	// Force results section to near top for cache file usage.
+	gen_result.SetValue(results_str.c_str(), nullptr, nullptr);
+
 	if (!VerifyXbSymbolDatabaseFilters(pXbeHeader)) {
 		pause_for_user_input();
 		return UNITTEST_FAIL_INVALID_XBE;
