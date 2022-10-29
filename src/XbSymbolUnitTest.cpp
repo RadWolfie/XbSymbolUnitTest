@@ -18,6 +18,12 @@
 
 #include <libXbSymbolDatabase.h>
 #include <xref/list_xref.h>
+#include <SimpleIni.h>
+
+bool operator==(const CSimpleIni::Entry& i, const CSimpleIni::Entry& ii)
+{
+	return std::strcmp(i.pItem, ii.pItem) == 0;
+}
 
 #include "Xbe.h"
 #include "helper.hpp"
@@ -33,6 +39,12 @@ unsigned int XbSDB_test_error = 0;
 unsigned int XbUnitTest_error = 0;
 
 static const char* section_symbols = "Symbols";
+static const char* cli_argument_str = "> XbSymbolUnitTest"
+                                      " [-h|--help]"
+                                      " default.xbe"
+                                      " [-out|--out <output to specific folder>]"
+                                      " [-f]"
+                                      " [-v]\n";
 
 #define UNITTEST_OK 0
 #define UNITTEST_FAIL_INVALID_ARG 1
@@ -45,6 +57,36 @@ static const char* section_symbols = "Symbols";
 #define UNITTEST_FAIL_SYMBOLS_NOT_MATCH 8
 #define UNITTEST_FAIL_DATABASE_NOT_SYNC 9
 
+// Buffer generation result in case user want to save as cache file.
+// Which will be use to compare against generated cache result.
+CSimpleIni gen_result(false, true, false);
+    // TODO: Make output message function with enum type of log.
+//       This will help with verbose argument.
+//       And centralize where it will output to. (sort of) but should be store in cache file too.
+
+static const char* section_XbSDb_messages = "XbSDb Messages";
+static const char* section_XbSUT_messages = "XbSUT Messages";
+static struct {
+	const char* unknown = "UNKNOWN";
+	const char* warn = "WARN";
+	const char* error = "ERROR";
+} sect_generic_messages;
+
+static const char* section_certificate = "Certificate";
+static struct {
+	const char* name = "Name";
+	const char* TitleID = "TitleID";
+	const char* TitleIDHex = "TitleIDHex";
+	const char* Region = "Region";
+} sect_certificate;
+
+static const char* section_libs = "Libs";
+static struct {
+	const char* BuildVersion = "BuildVersion";
+	const char* DSOUND = "DSOUND";
+	const char* JVS = "JVS";
+} sect_libs;
+
 void pause_for_user_input()
 {
 	std::cout << "Press 'enter' key to continue...";
@@ -53,12 +95,7 @@ void pause_for_user_input()
 
 int invalid_argument(int argc, char** argv)
 {
-	std::cout << "ERROR: Input correct argument as described below.\n\n"
-	             "> XbSymbolCacheGenTest default.xbe\n"
-	             "> XbSymbolCacheGenTest default.xbe --out [output to "
-	             "specific folder]\n"
-	             "> XbSymbolCacheGenTest --out [output to specific folder]"
-	             " default.xbe\n";
+	XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_ERROR, std::string("Input correct usage argument as described below.\n") + cli_argument_str);
 
 #if _DEBUG
 	// Verbose ARG output test
@@ -72,7 +109,12 @@ int invalid_argument(int argc, char** argv)
 	return UNITTEST_FAIL_INVALID_ARG;
 }
 
-int output_result_XbSDB()
+void help_argument(void)
+{
+	XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_INFO, std::string("Usage arguments:\n") + cli_argument_str);
+}
+
+int output_result_XbSDb()
 {
 	std::cout << "XbSymbolDatabase Test: ";
 	if (XbSDB_test_error == 0) {
@@ -84,7 +126,6 @@ int output_result_XbSDB()
 	return UNITTEST_FAIL_XBSDB;
 }
 
-extern void EmuOutputMessage(xb_output_message mFlag, const char* message);
 extern bool VerifyXbeIsBuiltWithXDK(const xbe_header* pXbeHeader,
                                     lib_versions& lib_vers,
                                     std::filesystem::path path_xbe);
@@ -97,22 +138,132 @@ extern int run_test_virtual(const xbe_header* pXbeHeader,
 // Add arguments here that are valid to use within application.
 cli_config::argtype cliArgValidate(const std::string arg)
 {
-	using namespace cli_config;
+	using cli_config::argtype;
 
+	// Output to folder
 	if (arg == "out") {
 		return argtype::pair;
 	}
+	// request cli argument details
+	else if (arg == "h") {
+		return argtype::single;
+	}
+	else if (arg == "help") {
+		return argtype::single;
+	}
+	// TODO: Implement overwrite existing file
+	// Force overwrite existing file
 	else if (arg == "f") {
+		return argtype::single;
+	}
+	// TODO: Implement verbose mode
+	// verbose mode
+	else if (arg == "v") {
 		return argtype::single;
 	}
 	return argtype::unknown;
 }
 
+static const std::string getXbeHeaderHash(const void* pXbeHeader)
+{
+	uint64_t uiHash = XXH3_64bits(pXbeHeader, sizeof(xbe_header));
+	return std::format("{:x}", uiHash);
+}
+
+static const std::string getXbeTitle(const xbe_header* pXbeHeader)
+{
+	size_t xb_start_addr =
+	    reinterpret_cast<size_t>(pXbeHeader) - pXbeHeader->dwBaseAddr;
+	xbe_certificate* pCertificate = nullptr;
+
+	if (pXbeHeader->pCertificateAddr) {
+		pCertificate = reinterpret_cast<xbe_certificate*>(
+		    xb_start_addr + pXbeHeader->pCertificateAddr);
+	}
+
+	char tAsciiTitle[40] = "Unknown";
+	if (pCertificate) {
+		std::wcstombs(tAsciiTitle, pCertificate->wszTitleName, sizeof(tAsciiTitle));
+	}
+
+	return tAsciiTitle;
+}
+
+template<bool doCache>
+void Generic_OutputMessage(xb_output_message mFlag, const char* section, const std::string& message)
+{
+	switch (mFlag) {
+		case XB_OUTPUT_MESSAGE_INFO: {
+			std::cout << "INFO   : " << message << std::endl;
+			break;
+		}
+		case XB_OUTPUT_MESSAGE_WARN: {
+			std::cout << "WARNING: " << message << std::endl;
+			if constexpr (doCache) {
+				gen_result.SetValue(section, sect_generic_messages.warn, message.c_str());
+			}
+			break;
+		}
+		case XB_OUTPUT_MESSAGE_ERROR: {
+			std::cout << "ERROR  : " << message << std::endl;
+			if constexpr (doCache) {
+				gen_result.SetValue(section, sect_generic_messages.error, message.c_str());
+			}
+			break;
+		}
+		case XB_OUTPUT_MESSAGE_DEBUG: {
+			std::cout << "DEBUG  : " << message << std::endl;
+			break;
+		}
+		default: {
+			std::cout << "UNKNOWN: " << message << std::endl;
+			if constexpr (doCache) {
+				gen_result.SetValue(section, sect_generic_messages.unknown, message.c_str());
+			}
+			break;
+		}
+	}
+}
+template void Generic_OutputMessage<true>(xb_output_message mFlag, const char* section, const std::string& message);
+template void Generic_OutputMessage<false>(xb_output_message mFlag, const char* section, const std::string& message);
+
+static void XbSDb_OutputMessage(xb_output_message mFlag, const char* message)
+{
+	Generic_OutputMessage<true>(mFlag, section_XbSDb_messages, message);
+}
+
+void Custom_OutputMessage(xb_output_message mFlag, const std::string& section, const std::string& key, const std::string& value)
+{
+	const std::string message = key + " = " + value;
+	switch (mFlag) {
+		case XB_OUTPUT_MESSAGE_INFO: {
+			std::cout << "INFO   : " << message << "\n";
+			break;
+		}
+		case XB_OUTPUT_MESSAGE_WARN: {
+			std::cout << "WARNING: " << message << "\n";
+			break;
+		}
+		case XB_OUTPUT_MESSAGE_ERROR: {
+			std::cout << "ERROR  : " << message << "\n";
+			break;
+		}
+		case XB_OUTPUT_MESSAGE_DEBUG: {
+			std::cout << "DEBUG  : " << message << "\n";
+			break;
+		}
+		default: {
+			std::cout << "UNKNOWN: " << message << "\n";
+			break;
+		}
+	}
+	gen_result.SetValue(section.c_str(), key.c_str(), value.c_str());
+}
 
 int main(int argc, char** argv)
 {
-	std::setlocale(LC_ALL, "English");
-	std::string path_xbe;
+	std::setlocale(LC_ALL, "en_US.utf8");
+	std::string xbe_path;
 	int test_ret = UNITTEST_OK;
 
 	cli_config::SetArgTypeValidateCallback(cliArgValidate);
@@ -122,11 +273,17 @@ int main(int argc, char** argv)
 		return invalid_argument(argc, argv);
 	}
 
+	// Check if user request for help detail.
+	if (cli_config::hasKey("h") || cli_config::hasKey("help")) {
+		help_argument();
+		return UNITTEST_OK;
+	}
+
 	// Get xbe's file path even if it's not given.
-	cli_config::GetValue(cli_config::filepath, &path_xbe);
+	cli_config::GetValue(cli_config::filepath, &xbe_path);
 
 	XbSymbolDatabase_SetOutputVerbosity(XB_OUTPUT_MESSAGE_DEBUG);
-	XbSymbolDatabase_SetOutputMessage(EmuOutputMessage);
+	XbSymbolDatabase_SetOutputMessage(XbSDb_OutputMessage);
 	XbSDB_test_error = XbSymbolDatabase_TestOOVPAs();
 
 	std::cout << "Total symbols in XbSymbolDatabase: "
@@ -135,20 +292,20 @@ int main(int argc, char** argv)
 	// Perform self test to verify all symbol registers are validated.
 	if (!run_test_verify_libraries()) {
 		// If not, do not allow to run unit test until this is resolve first.
-		std::cout << "ERROR: Databases from libXbSymbolDatabase and XbSymbolUnitTest are not in sync!\n";
+		XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, "Databases from libXbSymbolDatabase and XbSymbolUnitTest are not in sync!");
 		return UNITTEST_FAIL_DATABASE_NOT_SYNC;
 	}
 
 	// Do not process xbe test verification if file path is not given.
-	if (path_xbe.empty()) {
-		test_ret = output_result_XbSDB();
-		std::cout << "INFO: No xbe given, unit test end.\n";
+	if (xbe_path.empty()) {
+		test_ret = output_result_XbSDb();
+		XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_INFO, "No file path to xbe given, unit test end.");
 		return test_ret;
 	}
 
-	std::ifstream xbeFile = std::ifstream(path_xbe, std::ios::binary);
+	std::ifstream xbeFile = std::ifstream(xbe_path, std::ios::binary);
 	if (!xbeFile.is_open()) {
-		std::cout << "ERROR: Unable to open the file!\n";
+		XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, "Unable to open the file!");
 		pause_for_user_input();
 		return UNITTEST_FAIL_OPEN_FILE;
 	}
@@ -163,9 +320,13 @@ int main(int argc, char** argv)
 	const xbe_header* pXbeHeader =
 	    reinterpret_cast<const xbe_header*>(xbe_data);
 
+	// Buffer generation result in case user want to save as cache file.
+	// Which will be use to compare against generated cache result.
+	gen_result.Reset();
+
 	lib_versions lib_vers{};
 
-	if (!VerifyXbeIsBuiltWithXDK(pXbeHeader, lib_vers, path_xbe)) {
+	if (!VerifyXbeIsBuiltWithXDK(pXbeHeader, lib_vers, xbe_path)) {
 		pause_for_user_input();
 		return UNITTEST_FAIL_INVALID_XBE;
 	}
@@ -174,10 +335,12 @@ int main(int argc, char** argv)
 		pause_for_user_input();
 		return UNITTEST_FAIL_INVALID_XBE;
 	}
+	std::string gen_result_temp;
+	gen_result.Save(gen_result_temp);
 
 	test_ret = run_test_raw(pXbeHeader);
 	if (test_ret != UNITTEST_OK) {
-		std::cout << "ERROR: Raw test failed!\n";
+		XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, "Raw test failed!");
 		pause_for_user_input();
 		return test_ret;
 	}
@@ -185,10 +348,14 @@ int main(int argc, char** argv)
 	std::cout << "\n";
 
 	std::map<uint32_t, symbol_result> g_SymbolAddressesRaw = g_SymbolAddresses;
+	// Clear raw's results since we're only keeping virtual's results.
+	gen_result.Reset();
+	// Retrieve verification data after run raw test.
+	gen_result.LoadData(gen_result_temp);
 
 	test_ret = run_test_virtual(pXbeHeader, xbe_data);
 	if (test_ret != UNITTEST_OK) {
-		std::cout << "ERROR: Virtual test failed!\n";
+		XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, "Virtual test failed!");
 		pause_for_user_input();
 		return test_ret;
 	}
@@ -199,16 +366,14 @@ int main(int argc, char** argv)
 
 	// Ensure both raw and simulated xbox environment do have symbols detected.
 	if (g_SymbolAddresses.size() == 0 || g_SymbolAddressesRaw.size() == 0) {
-		std::cout << "ERROR: Symbols are not detected!\n";
+		XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, "Symbols are not detected!");
 		pause_for_user_input();
 		return UNITTEST_FAIL_SYMBOLS_NOT_FOUND;
 	}
 
 	// Then check both raw and simulated do indeed have same size.
 	if (g_SymbolAddresses.size() != g_SymbolAddressesRaw.size()) {
-		std::cout << "ERROR: Registered symbols are not even.\n"
-		          << "INFO: Raw xbe: " << g_SymbolAddressesRaw.size()
-		          << " - Sim xbox: " << g_SymbolAddresses.size() << "\n";
+		XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, "Registered symbols are not even; Raw xbe: " + std::to_string(g_SymbolAddressesRaw.size()) + " - Sim xbox: " + std::to_string(g_SymbolAddresses.size()));
 
 		// Remove all identical symbols
 		for (const auto& xref : g_SymbolAddresses) {
@@ -220,19 +385,21 @@ int main(int argc, char** argv)
 
 		// Now report what's missing compared to other.
 		for (const auto& xref : g_SymbolAddresses) {
-			std::cout << "ERROR: g_SymbolAddressesRaw is missing "
-			          << XbSymbolDatabase_LibraryToString(
-			                 xref.second.library_flag)
+			std::cout << "ERROR  : g_SymbolAddressesRaw is missing "
+			          << XbSymbolDatabase_LibraryToString(xref.second.library_flag)
 			          << " (b" << std::dec << std::setfill('0') << std::setw(4)
-			          << xref.second.build << ") " << xref.second.addr
+			          << xref.second.build
+			          << ") 0x" << std::hex << std::setfill('0') << std::setw(8)
+			          << xref.second.addr
 			          << " -> " << xref.second.symbol << "\n";
 		}
 		for (const auto& xref : g_SymbolAddressesRaw) {
-			std::cout << "ERROR: g_SymbolAddresses is missing "
-			          << XbSymbolDatabase_LibraryToString(
-			                 xref.second.library_flag)
+			std::cout << "ERROR  : g_SymbolAddresses is missing "
+			          << XbSymbolDatabase_LibraryToString(xref.second.library_flag)
 			          << " (b" << std::dec << std::setfill('0') << std::setw(4)
-			          << xref.second.build << ") " << xref.second.addr
+			          << xref.second.build
+			          << ") 0x" << std::hex << std::setfill('0') << std::setw(8)
+			          << xref.second.addr
 			          << " -> " << xref.second.symbol << "\n";
 		}
 
@@ -240,71 +407,220 @@ int main(int argc, char** argv)
 		return UNITTEST_FAIL_SYMBOLS_DIFF_SIZE;
 	}
 	else {
-		std::cout << "INFO: Symbol registered size...OK!\n";
+		XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_INFO, "Symbol registered size...OK!");
 	}
 
 	// Finally, check each string and addresses are the same.
 	if (!std::equal(g_SymbolAddresses.begin(), g_SymbolAddresses.end(), g_SymbolAddressesRaw.begin())) {
-		std::cout
-		    << "ERROR: Symbol registered does not match raw vs virtual xbox\n";
+		XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, "Symbol registered does not match raw vs virtual xbox.");
 		pause_for_user_input();
 		return UNITTEST_FAIL_SYMBOLS_NOT_MATCH;
 	}
 	else {
-		std::cout << "INFO: Symbol registered matching...OK!\n";
+		XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_INFO, "Symbol registered matching...OK!");
 	}
 
-	std::cout << "INFO: Scanning xbe file is completed.\n"
-	          << "INFO: Verifying detected symbols against unit test's "
-	             "symbols...\n\n";
+	XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_INFO, "Scanning xbe file is completed.");
+	XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_INFO, "Verifying detected symbols against unit test's symbols...\n");
 
 	unsigned full_lib_count = 0;
-	unsigned error_count = 0;
+	size_t error_count = 0;
 	run_test_verify_symbols(lib_vers, g_SymbolAddresses, full_lib_count, error_count);
 
 	// Append internal errors such as EmuRegisterSymbol function's result.
 	error_count += XbUnitTest_error;
 
 	if (error_count) {
-		std::cout << "XbSymbolUnitTest: FAIL - " << error_count << " errors\n";
+		XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_WARN, "XbSymbolUnitTest: FAIL - " + std::to_string(error_count) + " errors");
 	}
 
 	if (full_lib_count) {
-		std::cout << "XbSymbolUnitTest: Total of " << full_lib_count
-		          << " full libraries found\n";
+		XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_INFO, "XbSymbolUnitTest: Total of " + std::to_string(full_lib_count) + " full libraries found");
 	}
 
-	test_ret = output_result_XbSDB();
+	test_ret = output_result_XbSDb();
 
-	std::cout << "INFO: Unit test end.\n";
+	// TODO: Generate cache file and use it to compare the difference.
+	//       * Check if request for cache file. If so, then do below steps.
+	//       * Check for read-only from cli OR
+	//       * Check for overwrite request from cli
+	//       * What to compare:
+	//         * library's full/partial state
+	//         * each library's cache symbols and their addresses
+	//         * What else?
+	//       * Check note for what we should do here.
+
+	// Check for out argument has input to store symbols cache and results to a folder.
+	if (!cli_config::hasKey("out")) {
+		if (cli_config::hasKey("f")) {
+			XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_WARN, "-f argument require --out argument.");
+		}
+	}
+	else {
+		// Verify output folder is not empty.
+		std::string output_dir;
+		(void)cli_config::GetValue("out", &output_dir);
+		if (output_dir.empty()) {
+			XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, "--out argument require input value.");
+			return invalid_argument(argc, argv);
+		}
+
+		std::filesystem::path output_path = output_dir;
+		// Check if directory do not exist.
+		if (!std::filesystem::exists(output_path)) {
+			// Check if parent directory do not exist.
+			if (!std::filesystem::exists(output_path.parent_path())) {
+				// Since parent directory do not exist, then path to output directory was not created.
+				XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, "Output directory does not exist!");
+				return invalid_argument(argc, argv);
+			}
+			// Check if we are able to create directory.
+			std::error_code err;
+			if (!std::filesystem::create_directory(output_path, err)) {
+				XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, "Unable to create directory, error code: " + err.message());
+				return invalid_argument(argc, argv);
+			}
+		}
+
+		bool doSave = true;
+		std::filesystem::path file_name = getXbeTitle(pXbeHeader) + "-" + getXbeHeaderHash(pXbeHeader) + ".ini";
+		// Since output directory do exist, check if we have existing cache file.
+		std::filesystem::path cache_file = output_path / file_name;
+		if (std::filesystem::exists(cache_file)) {
+			// If does exist, then we want to compare the difference between generated to cached results.
+			CSimpleIni cache_result(false, true, false);
+			cache_result.LoadFile(cache_file.c_str());
+
+			// use local storage to re-use allocated memory.
+			CSimpleIni::TNamesDepend cache_sections;
+			CSimpleIni::TNamesDepend cache_keys;
+			CSimpleIni::TNamesDepend cache_values;
+			CSimpleIni::TNamesDepend gen_sections;
+			CSimpleIni::TNamesDepend gen_keys;
+			CSimpleIni::TNamesDepend gen_values;
+
+			size_t local_error_count = 0;
+
+			// Check for any missing data may not be included in generated and cache contents.
+			gen_result.GetAllSections(gen_sections);
+			cache_result.GetAllSections(cache_sections);
+			for (auto gSection = gen_sections.begin(); gSection != gen_sections.end();) {
+				const auto& foundSection = std::find(cache_sections.begin(), cache_sections.end(), *gSection);
+				if (foundSection == cache_sections.end()) {
+					gSection++;
+					continue;
+				}
+				// Get list of keys in a section.
+				gen_result.GetAllKeys(gSection->pItem, gen_keys);
+				cache_result.GetAllKeys(gSection->pItem, cache_keys);
+
+				// Search through generated keys
+				for (auto gKey = gen_keys.begin(); gKey != gen_keys.end();) {
+					const auto& foundKey = std::find(cache_keys.begin(), cache_keys.end(), *gKey);
+					if (foundKey == cache_keys.end()) {
+						gKey++;
+						continue;
+					}
+					// Get all values from a key.
+					gen_result.GetAllValues(gSection->pItem, gKey->pItem, gen_values);
+					cache_result.GetAllValues(gSection->pItem, gKey->pItem, cache_values);
+
+					// Search through generated values
+					for (auto gValue = gen_values.begin(); gValue != gen_values.end();) {
+						const auto& foundValue = std::find(cache_values.begin(), cache_values.end(), *gValue);
+						// Skip if not found.
+						if (foundValue == cache_values.end()) {
+							gValue++;
+							continue;
+						}
+
+						// Remove found value from list to avoid being report.
+						gValue = gen_values.erase(gValue);
+						cache_values.erase(foundValue);
+					}
+					// output which values has not been found
+					local_error_count += gen_values.size() + cache_values.size();
+					for (const auto& gValue : gen_values) {
+						XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_ERROR, std::string("cache file does not have [") + gSection->pItem + "] " + gKey->pItem + " = \"" + gValue.pItem + "\" value!");
+					}
+					for (const auto& cValue : cache_values) {
+						XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_ERROR, std::string("generated result does not have [") + gSection->pItem + "] " + gKey->pItem + " = \"" + cValue.pItem + "\" value!");
+					}
+
+					// Remove found key from list to avoid being report.
+					gKey = gen_keys.erase(gKey);
+					cache_keys.erase(foundKey);
+				}
+
+				// output which keys has not been found
+				local_error_count += gen_keys.size() + cache_keys.size();
+				for (const auto& gKey : gen_keys) {
+					XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_ERROR, std::string("cache file does not have [") + gSection->pItem + "] " + gKey.pItem + " key!");
+					gen_result.GetAllValues(gSection->pItem, gKey.pItem, gen_values);
+					local_error_count += gen_values.size();
+					for (const auto& gValue : gen_values) {
+						XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_ERROR, std::string("cache file does not have [") + gSection->pItem + "] " + gKey.pItem + " = \"" + gValue.pItem + "\" value!");
+					}
+				}
+				for (const auto& cKey : cache_keys) {
+					XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_ERROR, std::string("generated result does not have [") + gSection->pItem + "] " + cKey.pItem + " key!");
+					cache_result.GetAllValues(gSection->pItem, cKey.pItem, cache_values);
+					local_error_count += cache_values.size();
+					for (const auto& cValue : cache_values) {
+						XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_ERROR, std::string("generated result does not have [") + gSection->pItem + "] " + cKey.pItem + " = \"" + cValue.pItem + "\" value!");
+					}
+				}
+
+				// Remove found section from list to avoid being report.
+				gSection = gen_sections.erase(gSection);
+				cache_sections.erase(foundSection);
+			}
+
+			// output which sections has not been found
+			local_error_count += gen_sections.size() + cache_sections.size();
+			for (const auto& gSection : gen_sections) {
+				XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_ERROR, std::string("cache file does not have [") + gSection.pItem + "] section!");
+				gen_result.GetAllKeys(gSection.pItem, gen_keys);
+				for (const auto& gKey : gen_keys) {
+					gen_result.GetAllValues(gSection.pItem, gKey.pItem, gen_values);
+					local_error_count += gen_values.size();
+					for (const auto& gValue : gen_values) {
+						XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_ERROR, std::string("cache file does not have [") + gSection.pItem + "] " + gKey.pItem + " = \"" + gValue.pItem + "\" value!");
+					}
+				}
+			}
+			for (const auto& cSection : cache_sections) {
+				XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_ERROR, std::string("generated result does not have [") + cSection.pItem + "] section!");
+				cache_result.GetAllKeys(cSection.pItem, cache_keys);
+				for (const auto& cKey : cache_keys) {
+					cache_result.GetAllValues(cSection.pItem, cKey.pItem, cache_values);
+					local_error_count += cache_values.size();
+					for (const auto& cValue : cache_values) {
+						XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_ERROR, std::string("generated result does not have [") + cSection.pItem + "] " + cKey.pItem + " = \"" + cValue.pItem + "\" value!");
+					}
+				}
+			}
+			error_count += local_error_count;
+
+			if (local_error_count) {
+				XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_ERROR, "generated result does not match with cache file!");
+				error_count++;
+			}
+
+			// Check force overwrite argument exist
+			if (!cli_config::hasKey("f")) {
+				doSave = false;
+			}
+		}
+		// Check if we want save to cache file.
+		if (doSave) {
+			gen_result.SaveFile(cache_file.c_str(), false);
+		}
+	}
+
+	XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_INFO, "Unit test end.");
 
 	return test_ret;
-}
-
-void EmuOutputMessage(xb_output_message mFlag, const char* message)
-{
-	switch (mFlag) {
-		case XB_OUTPUT_MESSAGE_INFO: {
-			std::cout << "INFO   : " << message << std::endl;
-			break;
-		}
-		case XB_OUTPUT_MESSAGE_WARN: {
-			std::cout << "WARNING: " << message << std::endl;
-			break;
-		}
-		case XB_OUTPUT_MESSAGE_ERROR: {
-			std::cout << "ERROR  : " << message << std::endl;
-			break;
-		}
-		case XB_OUTPUT_MESSAGE_DEBUG: {
-			std::cout << "DEBUG  : " << message << std::endl;
-			break;
-		}
-		default: {
-			std::cout << "UNKNOWN: " << message << std::endl;
-			break;
-		}
-	}
 }
 
 void EmuRegisterSymbol(const char* library_str,
@@ -408,7 +724,7 @@ bool VerifyXbeIsBuiltWithXDK(const xbe_header* pXbeHeader,
 	//
 
 	if (pXbeHeader->dwMagic != 'HEBX') {
-		std::cout << "ERROR: Xbe does not have valid magic!\n";
+		XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, "Xbe does not have valid magic!");
 		return false;
 	}
 
@@ -417,7 +733,7 @@ bool VerifyXbeIsBuiltWithXDK(const xbe_header* pXbeHeader,
 		    xb_start_addr + pXbeHeader->pLibraryVersionsAddr);
 	}
 	else {
-		std::cout << "ERROR: Xbe does not contain library versions!\n";
+		XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, "Xbe does not contain library versions!");
 		return false;
 	}
 
@@ -426,15 +742,13 @@ bool VerifyXbeIsBuiltWithXDK(const xbe_header* pXbeHeader,
 		    xb_start_addr + pXbeHeader->pCertificateAddr);
 	}
 	else {
-		std::cout << "ERROR: Xbe does not contain certificate pointer!\n";
+		XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, "Xbe does not contain certificate pointer!");
 		return false;
 	}
 
-	std::cout << "INFO: Detected Microsoft XDK application...\n";
+	XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_INFO, "Detected Microsoft XDK application...");
 
 	uint16_t buildVersion = 0;
-	char tAsciiTitle[40] = "Unknown";
-	std::wcstombs(tAsciiTitle, pCertificate->wszTitleName, sizeof(tAsciiTitle));
 	pSections = reinterpret_cast<xbe_section_header*>(
 	    xb_start_addr + pXbeHeader->pSectionHeadersAddr);
 	uint32_t sectionSize = pXbeHeader->dwSections;
@@ -445,25 +759,29 @@ bool VerifyXbeIsBuiltWithXDK(const xbe_header* pXbeHeader,
 	          << XbSymbolDatabase_LibraryVersion() << "\n";
 
 	// Store Certificate Details
-	std::cout << "Name                  : " << tAsciiTitle << "\n";
-	std::cout << "TitleID               : "
-	          << FormatTitleId(pCertificate->dwTitleId) << "\n";
-	std::cout << "Region                : " << pCertificate->dwGameRegion
-	          << "\n";
+	const std::string& title_name = getXbeTitle(pXbeHeader);
+	std::cout << "Name                  : " << title_name << "\n";
+	gen_result.SetValue(section_certificate, sect_certificate.name, title_name.c_str());
+	const std::string& title_id = FormatTitleId(pCertificate->dwTitleId);
+	std::cout << "TitleID               : " << title_id << "\n";
+	std::cout << "TitleIDHex            : 0x" << std::hex << pCertificate->dwTitleId << "\n";
+	gen_result.SetValue(section_certificate, sect_certificate.TitleID, title_id.c_str());
+	gen_result.SetLongValue(section_certificate, sect_certificate.TitleIDHex, pCertificate->dwTitleId, nullptr, true);
+	std::cout << "Region                : 0x" << std::hex << pCertificate->dwGameRegion << "\n";
+	gen_result.SetLongValue(section_certificate, sect_certificate.Region, pCertificate->dwGameRegion, nullptr, true);
 
 	// Hash the loaded XBE's header, use it as a filename
-	uint64_t uiHash = XXH3_64bits((void*)pXbeHeader, sizeof(xbe_header));
-	std::cout << "Xbe header hash       : " << std::hex << uiHash << "\n";
+	std::cout << "Xbe header hash       : " << getXbeHeaderHash(pXbeHeader) << "\n";
 	std::cout.flags(cout_fmt);
 
 	// Store Library Details
 	for (uint32_t i = 0; i < pXbeHeader->dwLibraryVersions; i++) {
-		std::string LibraryName(pLibraryVersion[i].szName,
-		                        pLibraryVersion[i].szName + 8);
+		const std::string LibraryName(pLibraryVersion[i].szName,
+		                              pLibraryVersion[i].szName + 8);
+		const std::string BuildVersion = std::to_string(pLibraryVersion[i].wBuildVersion) + "." + std::to_string(pLibraryVersion[i].wFlags.QFEVersion);
 		std::cout << "Library Name[" << std::setw(2) << i
-		          << "]      : " << LibraryName << " (b" << std::setw(4)
-		          << pLibraryVersion[i].wBuildVersion << "." << std::setw(0)
-		          << pLibraryVersion[i].wFlags.QFEVersion << ")\n";
+		          << "]      : " << LibraryName << " (b" << BuildVersion << ")\n";
+		gen_result.SetValue(section_libs, LibraryName.c_str(), BuildVersion.c_str());
 
 		if (buildVersion < pLibraryVersion[i].wBuildVersion) {
 			buildVersion = pLibraryVersion[i].wBuildVersion;
@@ -520,14 +838,19 @@ bool VerifyXbeIsBuiltWithXDK(const xbe_header* pXbeHeader,
 	}
 	std::cout.flags(cout_fmt);
 
-	// Force verify if DSOUND section do exist, then append.
-	for (unsigned int i = 0; i < sectionSize; i++) {
-		section_str = reinterpret_cast<const char*>(
-		    xb_start_addr + pSections[i].SectionNameAddr);
+	// Check if DSOUND library is not found then do force verify.
+	if (!lib_vers.dsound) {
+		// Force verify if DSOUND section do exist, then append.
+		for (unsigned int i = 0; i < sectionSize; i++) {
+			section_str = reinterpret_cast<const char*>(
+			    xb_start_addr + pSections[i].SectionNameAddr);
 
-		if (std::strncmp(section_str, Lib_DSOUND, 8) == 0) {
-			lib_vers.dsound = buildVersion;
-			break;
+			if (std::strncmp(section_str, Lib_DSOUND, 8) == 0) {
+				lib_vers.dsound = buildVersion;
+				std::cout << "Library Name[ ?]      : DSOUND   (b" << buildVersion << ")\n";
+				gen_result.SetLongValue(section_libs, sect_libs.DSOUND, buildVersion);
+				break;
+			}
 		}
 	}
 
@@ -535,9 +858,13 @@ bool VerifyXbeIsBuiltWithXDK(const xbe_header* pXbeHeader,
 	if (GetXbeType(pXbeHeader) == XB_XBE_TYPE_CHIHIRO ||
 	    std::filesystem::exists(path_xbe.parent_path() / "boot.id")) {
 		lib_vers.jvs = buildVersion;
+		//                                    XAPILIB  (
+		std::cout << "Library Name[ ?]      : JVS      (b" << buildVersion << ")\n";
+		gen_result.SetLongValue(section_libs, sect_libs.JVS, buildVersion);
 	}
 
 	std::cout << "BuildVersion          : " << buildVersion << "\n";
+		gen_result.SetLongValue(section_libs, sect_libs.BuildVersion, buildVersion);
 
 	std::cout << "\n";
 	return true;
@@ -601,8 +928,7 @@ scanError:
 		section_output.filters = nullptr;
 	}
 
-	std::cout << "ERROR: GetXbSymbolDatabaseFilters failed for: " << error_msg
-	          << "\n";
+	XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, "GetXbSymbolDatabaseFilters failed for: " + error_msg);
 	pause_for_user_input();
 	return false;
 }
@@ -745,7 +1071,7 @@ scanError:
 		delete[] section_input.filters;
 	}
 
-	std::cout << "ERROR: ScanXbe failed for: " << error_msg << "\n";
+	XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, "ScanXbe failed for: " + error_msg);
 	pause_for_user_input();
 }
 
@@ -799,18 +1125,18 @@ int run_test_virtual(const xbe_header* pXbeHeader, const uint8_t* xbe_data)
 			if (pSectionHeaders[s].dwVirtualAddr +
 			        pSectionHeaders[s].dwVirtualSize >
 			    _128_MiB) {
-				std::cout << "ERROR: section request virtual size allocation "
-				             "outside 128MiB "
-				             "range, skipping...\n";
+				XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, "section request virtual size allocation "
+				                                             "outside 128MiB "
+				                                             "range, skipping...");
 				continue;
 			}
 
 			if (pSectionHeaders[s].dwVirtualAddr +
 			        pSectionHeaders[s].dwSizeofRaw >
 			    _128_MiB) {
-				std::cout << "ERROR: section request raw size allocation "
-				             "outside 128MiB "
-				             "range, skipping...\n";
+				XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, "section request raw size allocation "
+				                                             "outside 128MiB "
+				                                             "range, skipping...");
 				continue;
 			}
 

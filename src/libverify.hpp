@@ -54,4 +54,14 @@ bool run_test_verify_libraries();
 
 void run_test_verify_symbols(lib_versions &lib_ver,
                              std::map<uint32_t, symbol_result> &symbols_list,
-                             unsigned &full_lib_count, unsigned &error_count);
+                             unsigned &full_lib_count, size_t &error_count);
+
+template<bool doCache>
+void Generic_OutputMessage(xb_output_message mFlag, const char* section, const std::string& message);
+
+template<bool doCache = true>
+static void XbSUT_OutputMessage(xb_output_message mFlag, const std::string& message)
+{
+	Generic_OutputMessage<doCache>(mFlag, "XbSUT Messages", message);
+}
+void Custom_OutputMessage(xb_output_message mFlag, const std::string& section, const std::string& key, const std::string& value);

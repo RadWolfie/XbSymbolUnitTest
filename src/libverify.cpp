@@ -24,10 +24,20 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <sstream>
 #include <vector>
+#include <SimpleIni.h>
 
 #include "libverify.hpp"
 #include "libverify/unittest.hpp"
+
+static const std::string results_str = "results";
+static const std::string pass_str = "PASS";
+static const std::string partial_str = "PARTIAL";
+static const std::string none_str = "NONE";
+static const std::string fail_str = "FAIL";
+
+extern CSimpleIni gen_result;
 
 bool verify_version_range(const std::string& symbol_str,
                           const version_ranges& version_range)
@@ -36,17 +46,11 @@ bool verify_version_range(const std::string& symbol_str,
 	if (version_range.intro_start == VER_NONE &&
 	    version_range.intro_end == VER_NONE) {
 		ret = false;
-		std::cout << "ERROR: " << symbol_str
-		          << " cannot have VER_NONE in intro range. start= "
-		          << version_range.intro_start
-		          << "; end= " << version_range.intro_end << "\n";
+		XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, symbol_str + " cannot have VER_NONE in intro range. start= " + std::to_string(version_range.intro_start) + "; end= " + std::to_string(version_range.intro_end));
 	}
 	else if (version_range.intro_start >= version_range.intro_end) {
 		ret = false;
-		std::cout << "ERROR: " << symbol_str
-		          << " has invalid intro range. start= "
-		          << version_range.intro_start
-		          << "; end= " << version_range.intro_end << "\n";
+		XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, symbol_str + " has invalid intro range. start= " + std::to_string(version_range.intro_start) + "; end= " + std::to_string(version_range.intro_end));
 	}
 
 	if ((version_range.revive_start == VER_NONE &&
@@ -56,10 +60,7 @@ bool verify_version_range(const std::string& symbol_str,
 	    (version_range.revive_start != VER_NONE &&
 	     version_range.revive_start >= version_range.revive_end)) {
 		ret = false;
-		std::cout << "ERROR: " << symbol_str
-		          << " has invalid revive range. start= "
-		          << version_range.revive_start
-		          << "; end= " << version_range.revive_end << "\n";
+		XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, symbol_str + " has invalid revive range. start= " + std::to_string(version_range.revive_start) + "; end= " + std::to_string(version_range.revive_end));
 	}
 
 	return ret;
@@ -83,12 +84,13 @@ bool within_version_range(const uint16_t lib_version,
 
 bool match_library_db(std::map<uint32_t, symbol_result>& list,
                       const uint16_t lib_version,
+                      const std::string lib_subcategory_str,
                       const library_list* lib_db,
                       uint32_t xref_offset,
                       uint32_t xref_total,
                       const uint32_t lib_flags,
                       std::vector<std::string>& missing,
-                      unsigned& error_count,
+                      size_t& error_count,
                       bool bOptional = false)
 {
 	size_t lib_db_size = lib_db->size();
@@ -134,9 +136,7 @@ bool match_library_db(std::map<uint32_t, symbol_result>& list,
 			// If xref is found, then we need to report it.
 			if (found_xref != list.end()) {
 				error_count++;
-				std::cout << "ERROR: " << found_xref->second.symbol << " (b"
-				          << std::dec << std::setfill('0') << std::setw(4)
-				          << found_xref->second.build << ") is detected!\n";
+				XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, found_xref->second.symbol + " (b" + std::to_string(found_xref->second.build) + ") is detected!");
 			}
 			continue;
 		}
@@ -162,7 +162,8 @@ bool match_library_db(std::map<uint32_t, symbol_result>& list,
 			/*
 			// Handled by missing_library_db, so we just skip it.
 			// Although, somehow D3D_DestroyResource symbol didn't show up if
-			not in entry? Why? std::cout << "ERROR: Symbol is missing from unit
+			not in entry? Why?
+			std::cout << "ERROR: Symbol is missing from unit
 			test's database: "
 			          << found_xref->second.symbol
 			          << "\n";
@@ -176,25 +177,26 @@ bool match_library_db(std::map<uint32_t, symbol_result>& list,
 			continue;
 		}
 		found_size++;
-#if _VERBOSE // Output which symbol is detected.
-		std::cout << "INFO : " << found_xref->second.symbol << " (b" << std::dec
-		          << std::setfill('0') << std::setw(4)
-		          << found_xref->second.build << ") found!\n";
+		gen_result.SetLongValue(lib_subcategory_str.c_str(),
+		                        found_xref->second.symbol.c_str(),
+		                        found_xref->second.addr,
+		                        nullptr,
+		                        true);
+#ifdef _VERBOSE // Output which symbol is detected.
+		XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_INFO, found_xref->second.symbol + " (b" + std::to_string(found_xref->second.build) + ") found!");
 #endif
 	}
 
 	if (found_size == 0) {
 		if (missing.empty() && !bOptional) {
 			// TODO: Check if any symbols are below title's build version.
-			std::cout << "ERROR: Couldn't find any recognized symbols!\n";
+			XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, "Couldn't find any recognized symbols!");
 			return false;
 		}
 	}
 
 #ifdef _VERBOSE
-	std::cout << "INFO: Actual= " << lib_db->size()
-	          << "; Current= " << lib_db_size << "; Found= " << found_size
-	          << "\n";
+	XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_INFO, "Actual= " + std::to_string(lib_db->size()) + "; Current= " + std::to_string(lib_db_size) + "; Found= " + std::to_string(found_size));
 #endif
 
 	return found_size == lib_db_size;
@@ -203,7 +205,7 @@ bool match_library_db(std::map<uint32_t, symbol_result>& list,
 void missing_library_db(std::map<uint32_t, symbol_result>& list,
                         const library_db& lib_db,
                         const uint32_t lib_flags,
-                        unsigned& error_count)
+                        size_t& error_count)
 {
 	// Report missing symbol registrations
 	for (auto&& [xref_index, xref_entry] : list) {
@@ -251,8 +253,7 @@ void missing_library_db(std::map<uint32_t, symbol_result>& list,
 		if ((xref_entry.library_flag & lib_flags) == 0) {
 			if (match_found) {
 				error_count++;
-				std::cout << "ERROR: Symbol is not registered in right place: "
-				          << xref_entry.symbol << "\n";
+				XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, "Symbol is not registered in right place: " + xref_entry.symbol);
 			}
 			continue;
 		}
@@ -270,9 +271,9 @@ void missing_library_db(std::map<uint32_t, symbol_result>& list,
 
 
 		error_count++;
-		std::cout << "ERROR: Unit test is missing " << xref_entry.symbol
-		          << " (b" << std::dec << std::setfill('0') << std::setw(4)
-		          << xref_entry.build << ") symbol register! addr = " << std::hex << std::setfill('0') << std::setw(8) << xref_entry.addr << "\n";
+		std::stringstream toHexStr;
+		toHexStr << std::hex << xref_entry.addr;
+		XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, "Unit test is missing " + xref_entry.symbol + " (b" + std::to_string(xref_entry.build) + ") symbol register! addr = 0x" + toHexStr.str());
 	}
 }
 
@@ -282,7 +283,7 @@ void verify_database_duplicate_compare(const char* lib_str,
                                        const library_list* db1,
                                        const library_list* db2,
                                        const library_list* db3,
-                                       unsigned& error_count)
+                                       size_t& error_count)
 {
 	unsigned match_found = 0;
 
@@ -317,17 +318,14 @@ void verify_database_duplicate_compare(const char* lib_str,
 	// paste and not update new entry or making duplicate entries.
 	if (match_found) {
 		error_count++;
-
-		std::cout << "ERROR: Duplicate symbol registers detected: "
-		          << xref_symbol.c_str() << " (index: " << xref_index << ")"
-		          << "\n";
+		XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, "Duplicate symbol registers detected: " + xref_symbol + " (index: " + std::to_string(xref_index) + ")");
 	}
 }
 
 // Make sure there are no duplicate xref entries from same library.
 void verify_database_duplicate(const char* lib_str,
                                const library_db& lib_db,
-                               unsigned& error_count)
+                               size_t& error_count)
 {
 	for (const auto& subcategory_i : lib_db.subcategories) {
 
@@ -388,7 +386,7 @@ void verify_database_duplicate(const char* lib_str,
 void verify_database_xref_range_compare(const library_list* lib_list,
                        const unsigned xref_min,
                        const unsigned xref_max,
-                       unsigned& error_count)
+                       size_t& error_count)
 {
 	if (lib_list) {
 		for (auto&& [xref_index, xref_entry] : *lib_list) {
@@ -396,8 +394,7 @@ void verify_database_xref_range_compare(const library_list* lib_list,
 			if (xref_index < xref_min ||
 			    xref_index >= xref_max) {
 				error_count++;
-				std::cout << "ERROR: Reference index is not within range: "
-				          << xref_entry.begin()->first << "\n";
+				XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, "Reference index is not within range:" + xref_entry.begin()->first);
 			}
 		}
 	}
@@ -406,7 +403,7 @@ void verify_database_xref_range_compare(const library_list* lib_list,
 // Check each xref indexes are within library's xref range.
 void verify_database_xref_range(const char* lib_str,
                                 const library_db& lib_db,
-                                unsigned& error_count)
+                                size_t& error_count)
 {
 	auto xref_min = lib_db.xref_offset;
 	auto xref_max = lib_db.xref_total + xref_min;
@@ -420,9 +417,9 @@ void verify_database_xref_range(const char* lib_str,
 
 void run_test_verify_library(const char* lib_str,
                               const library_db& lib_db,
-                              unsigned& error_count)
+                              size_t& error_count)
 {
-	unsigned error_count_local = 0;
+	size_t error_count_local = 0;
 	verify_database_duplicate(lib_str, lib_db, error_count_local);
 	verify_database_xref_range(lib_str, lib_db, error_count_local);
 
@@ -442,17 +439,13 @@ void run_test_verify_library(const char* lib_str,
 	// Make sure both libXbSymbolDatabase and unit test's databases has correct size.
 	if ((lib_db.xref_total - lib_db.xref_exclude) != lib_size) {
 		error_count_local++;
-		std::cout << "ERROR: " << lib_str << " (size: "
-		          << lib_size
-		          << ") database is not in sync with libXbSymbolDatabase's (size: "
-		          << (lib_db.xref_total - lib_db.xref_exclude)
-		          << ")!\n";
+		XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, std::string(lib_str) + " (size: " + std::to_string(lib_size) + ") database is not in sync with libXbSymbolDatabase's (size: " + std::to_string(lib_db.xref_total - lib_db.xref_exclude) + ")!");
 	}
 
 	// Make verbose for exclude count.
 	if (lib_db.xref_exclude) {
-		std::cout << "DEBUG: " << lib_str << " has exclude " << lib_db.xref_exclude
-		          << " xref(s).\n\n";
+		XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_DEBUG, std::string(lib_str) + " has exclude " + std::to_string(lib_db.xref_exclude) + " xref(s).");
+		std::cout << "\n";
 	}
 	else if (error_count_local) {
 		std::cout << "\n";
@@ -463,7 +456,7 @@ void run_test_verify_library(const char* lib_str,
 
 bool run_test_verify_libraries()
 {
-	unsigned error_count = 0;
+	size_t error_count = 0;
 	library_db lib_db;
 	getLibraryD3D8(lib_db);
 	run_test_verify_library(Lib_D3D8, lib_db, error_count);
@@ -502,13 +495,14 @@ void run_test_verify_symbol(std::map<uint32_t, symbol_result>& symbols_list,
                             const uint32_t lib_flags,
                             const library_db& lib_db,
                             unsigned& full_lib_count,
-                            unsigned& error_count)
+                            size_t& error_count)
 {
 	std::vector<std::string> symbols_missing;
 	bool is_match;
 
 	if (lib_ver == 0) {
-		std::cout << "INFO: " << lib_str << " is not detected, skipping...\n\n";
+		XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_INFO, std::string(lib_str) + " is not detected, skipping...");
+		std::cout << "\n";
 		return;
 	}
 
@@ -516,70 +510,86 @@ void run_test_verify_symbol(std::map<uint32_t, symbol_result>& symbols_list,
 
 	if (lib_db.subcategories.empty()) {
 		error_count++;
-		std::cout << "ERROR: " << lib_str << "'s database does not have any subcategories, skipping...\n\n";
+		XbSUT_OutputMessage<true>(XB_OUTPUT_MESSAGE_ERROR, std::string(lib_str) + "'s database does not have any subcategories, skipping...");
+		std::cout << "\n";
 		return;
 	}
 
+	std::string library_prefix = std::string(lib_str) + " (";
 	for (const auto& subcategory : lib_db.subcategories) {
 		if (subcategory->optional != nullptr) {
 			symbols_missing.clear();
-			unsigned error_count_local = 0;
-			is_match = match_library_db(symbols_list, lib_ver, subcategory->optional, lib_db.xref_offset, lib_db.xref_total, lib_flags, symbols_missing, error_count_local, true);
+			size_t error_count_local = 0;
+			std::string lib_subcategory = library_prefix + subcategory->name +")";
+			is_match = match_library_db(symbols_list, lib_ver, lib_subcategory, subcategory->optional, lib_db.xref_offset, lib_db.xref_total, lib_flags, symbols_missing, error_count_local, true);
 
+			lib_subcategory += " optional";
 			if (!is_match) {
 				for (auto& symbol : symbols_missing) {
-					std::cout << "INFO: Title is missing one of " << symbol << "\n";
+					XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_INFO, "Title is missing one of " + symbol);
 				}
 				if (symbols_missing.empty()) {
-					std::cout << "INFO: " << lib_str << " (" << subcategory->name << ") optional = NONE\n\n";
+					Custom_OutputMessage(XB_OUTPUT_MESSAGE_INFO, results_str, lib_subcategory, none_str);
+					std::cout << "\n";
 				}
 				else {
-					std::cout << "INFO: " << lib_str << " (" << subcategory->name << ") optional = PARTIAL\n\n";
+					Custom_OutputMessage(XB_OUTPUT_MESSAGE_INFO, results_str, lib_subcategory, partial_str);
+					std::cout << "\n";
 				}
 			}
 			else {
-				std::cout << "INFO: " << lib_str << " (" << subcategory->name << ") optional = PASS\n";
+				Custom_OutputMessage(XB_OUTPUT_MESSAGE_INFO, results_str, lib_subcategory, pass_str);
+				std::cout << "\n";
 			}
 		}
 
 		if (subcategory->min != nullptr) {
 
 			symbols_missing.clear();
-			is_match = match_library_db(symbols_list, lib_ver, subcategory->min, lib_db.xref_offset, lib_db.xref_total, lib_flags, symbols_missing, error_count);
+			std::string lib_subcategory = library_prefix + subcategory->name + ")";
+			is_match = match_library_db(symbols_list, lib_ver, lib_subcategory, subcategory->min, lib_db.xref_offset, lib_db.xref_total, lib_flags, symbols_missing, error_count);
 
+			lib_subcategory += " min";
 			if (!is_match) {
 				for (auto& symbol : symbols_missing) {
-					std::cout << "INFO: Title is missing one of " << symbol << "\n";
+					XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_INFO, "Title is missing one of " + symbol);
 				}
-				std::cout << "INFO: " << lib_str << " (" << subcategory->name << ") min = FAIL\n\n";
+				Custom_OutputMessage(XB_OUTPUT_MESSAGE_INFO, results_str, lib_subcategory, fail_str);
+				std::cout << "\n";
 				continue;
 			}
-			std::cout << "INFO: " << lib_str << " (" << subcategory->name << ") min = PASS\n";
+			Custom_OutputMessage(XB_OUTPUT_MESSAGE_INFO, results_str, lib_subcategory, pass_str);
+			std::cout << "\n";
 		}
 
+		std::string lib_subcategory = library_prefix + subcategory->name + ")";
 		if (subcategory->full == nullptr) {
-			std::cout << "WARN: " << lib_str << " (" << subcategory->name << ") db is missing, skipping...\n\n";
+			XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_WARN, lib_subcategory + " db is missing, skipping...");
+			std::cout << "\n";
 			continue;
 		}
 		symbols_missing.clear();
-		is_match = match_library_db(symbols_list, lib_ver, subcategory->full, lib_db.xref_offset, lib_db.xref_total, lib_flags, symbols_missing, error_count);
+		is_match = match_library_db(symbols_list, lib_ver, lib_subcategory, subcategory->full, lib_db.xref_offset, lib_db.xref_total, lib_flags, symbols_missing, error_count);
 
+		lib_subcategory += " full";
 		if (!is_match) {
 			for (auto& symbol : symbols_missing) {
-				std::cout << "INFO: Title is missing one of " << symbol << "\n";
+				XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_INFO, "Title is missing one of " + symbol);
 			}
-			std::cout << "INFO: " << lib_str << " (" << subcategory->name << ") full = FAIL\n\n";
+			Custom_OutputMessage(XB_OUTPUT_MESSAGE_INFO, results_str, lib_subcategory, fail_str);
+			std::cout << "\n";
 			continue;
 		}
 		full_lib_count++;
-		std::cout << "INFO: " << lib_str << " (" << subcategory->name << ") full = PASS\n\n";
+		Custom_OutputMessage(XB_OUTPUT_MESSAGE_INFO, results_str, lib_subcategory, pass_str);
+		std::cout << "\n";
 	}
 }
 
 void run_test_verify_symbols(lib_versions& lib_vers,
                              std::map<uint32_t, symbol_result>& symbols_list,
                              unsigned& full_lib_count,
-                             unsigned& error_count)
+                             size_t& error_count)
 {
 	library_db lib_db;
 
