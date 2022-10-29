@@ -60,9 +60,6 @@ static const char* cli_argument_str = "> XbSymbolUnitTest"
 // Buffer generation result in case user want to save as cache file.
 // Which will be use to compare against generated cache result.
 CSimpleIni gen_result(false, true, false);
-    // TODO: Make output message function with enum type of log.
-//       This will help with verbose argument.
-//       And centralize where it will output to. (sort of) but should be store in cache file too.
 
 static const char* section_XbSDb_messages = "XbSDb Messages";
 static const char* section_XbSUT_messages = "XbSUT Messages";
@@ -151,7 +148,6 @@ cli_config::argtype cliArgValidate(const std::string arg)
 	else if (arg == "help") {
 		return argtype::single;
 	}
-	// TODO: Implement overwrite existing file
 	// Force overwrite existing file
 	else if (arg == "f") {
 		return argtype::single;
@@ -439,16 +435,6 @@ int main(int argc, char** argv)
 	}
 
 	test_ret = output_result_XbSDb();
-
-	// TODO: Generate cache file and use it to compare the difference.
-	//       * Check if request for cache file. If so, then do below steps.
-	//       * Check for read-only from cli OR
-	//       * Check for overwrite request from cli
-	//       * What to compare:
-	//         * library's full/partial state
-	//         * each library's cache symbols and their addresses
-	//         * What else?
-	//       * Check note for what we should do here.
 
 	// Check for out argument has input to store symbols cache and results to a folder.
 	if (!cli_config::hasKey("out")) {
@@ -801,7 +787,6 @@ bool VerifyXbeIsBuiltWithXDK(const xbe_header* pXbeHeader,
 				lib_vers.d3dx8 = pLibraryVersion[i].wBuildVersion;
 				break;
 #endif
-			// TODO: Need to add additional check since 4039 is ommited out.
 			case XbSymbolLib_DSOUND:
 				lib_vers.dsound = pLibraryVersion[i].wBuildVersion;
 				break;
@@ -839,6 +824,7 @@ bool VerifyXbeIsBuiltWithXDK(const xbe_header* pXbeHeader,
 	std::cout.flags(cout_fmt);
 
 	// Check if DSOUND library is not found then do force verify.
+	// So far this only occur in XDK 4039 build.
 	if (!lib_vers.dsound) {
 		// Force verify if DSOUND section do exist, then append.
 		for (unsigned int i = 0; i < sectionSize; i++) {
