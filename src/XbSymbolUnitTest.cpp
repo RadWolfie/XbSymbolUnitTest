@@ -435,12 +435,6 @@ int main(int argc, char** argv)
 		XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_WARN, "XbSymbolUnitTest: FAIL - " + std::to_string(error_count) + " errors");
 	}
 
-	if (full_lib_count) {
-		XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_INFO, "XbSymbolUnitTest: Total of " + std::to_string(full_lib_count) + " full libraries found");
-	}
-
-	test_ret = output_result_XbSDb();
-
 	// Check for out argument has input to store symbols cache and results to a folder.
 	if (!cli_config::hasKey("out")) {
 		if (cli_config::hasKey("f")) {
@@ -591,11 +585,9 @@ int main(int argc, char** argv)
 					}
 				}
 			}
-			error_count += local_error_count;
 
 			if (local_error_count) {
-				XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_ERROR, "generated result does not match with cache file!");
-				error_count++;
+				XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, "XbSymbolUnitTest: FAIL - " + std::to_string(local_error_count) + " errors; generated result does not match with cache file!");
 			}
 
 			// Check force overwrite argument exist
@@ -608,6 +600,12 @@ int main(int argc, char** argv)
 			gen_result.SaveFile(cache_file.c_str(), false);
 		}
 	}
+
+	if (full_lib_count) {
+		XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_INFO, "XbSymbolUnitTest: Total of " + std::to_string(full_lib_count) + " full libraries found");
+	}
+
+	test_ret = output_result_XbSDb();
 
 	XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_INFO, "Unit test end.");
 
