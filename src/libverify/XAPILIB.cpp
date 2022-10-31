@@ -158,8 +158,6 @@ static const library_list xinput_full = {
 	REGISTER_SYMBOL_INLINE(g_DeviceTypeInfoTableEnd, VER_RANGE(4242, VER_MAX, VER_NONE, VER_NONE)),
 
 	// OOVPA sigs
-	// Without xrefs dependency
-	REGISTER_SYMBOL_INLINE(IUsbInit_GetMaxDeviceTypeCount, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
 
 	// With xrefs dependency (order)
 	REGISTER_SYMBOL_INLINE(XGetDeviceChanges, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
@@ -175,6 +173,12 @@ static const library_list xinput_full = {
 	REGISTER_SYMBOL_INLINE(XInputPoll, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
 	REGISTER_SYMBOL_INLINE(XInputSetLightgunCalibration, VER_RANGE(4831, VER_MAX, VER_NONE, VER_NONE)),
 	REGISTER_SYMBOL_INLINE(XInputSetState, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
+};
+
+static const library_list usbd_full = {
+	// OOVPA sigs
+	// Without xrefs dependency
+	REGISTER_SYMBOL_INLINE(IUsbInit_GetMaxDeviceTypeCount, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
 };
 
 enum LOCAL_XREFS {
@@ -228,9 +232,21 @@ static const subcategory_db xinput_db = {
 	.full = &xinput_full,
 };
 
+static const subcategory_db usbd_db = {
+	.name = "USBD",
+	.optional = nullptr,
+	.min = nullptr,
+	.full = &usbd_full,
+};
+
+// TODO: Create (O)HCD subcategory database when relative signatures are added
+// NOTE: May need split into HCD and OHCD groups.
+
+// TODO: Create OHCI subcategory database when relative signatures are added
+
 void getLibraryXAPILIB(library_db& lib_db)
 {
-	lib_db.subcategories = { &xapilib_db, &fiber_db, &thread_db, &mu_db, &xinput_db };
+	lib_db.subcategories = { &xapilib_db, &fiber_db, &thread_db, &mu_db, &xinput_db, &usbd_db };
 	lib_db.xref_offset = XREF_OFFSET;
 	lib_db.xref_total = LOCAL_COUNT;
 	lib_db.xref_exclude = 0;
