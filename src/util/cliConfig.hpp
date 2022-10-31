@@ -19,7 +19,7 @@ enum class argtype {
 	pair
 };
 
-typedef argtype (*argtype_callback)(const std::string arg);
+typedef argtype (*argtype_callback)(const std::string& arg);
 
 void SetArgTypeValidateCallback(argtype_callback callback);
 

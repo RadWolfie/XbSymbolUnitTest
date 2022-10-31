@@ -44,7 +44,7 @@ static const char* cli_argument_str = "> XbSymbolUnitTest"
                                       " default.xbe"
                                       " [-out|--out <output to specific folder>]"
                                       " [-f]"
-                                      " [-v]\n";
+                                      " [-v|--verbose]\n";
 
 #define UNITTEST_OK 0
 #define UNITTEST_FAIL_INVALID_ARG 1
@@ -133,7 +133,7 @@ extern int run_test_virtual(const xbe_header* pXbeHeader,
                             const uint8_t* xbe_data);
 
 // Add arguments here that are valid to use within application.
-cli_config::argtype cliArgValidate(const std::string arg)
+cli_config::argtype cliArgValidate(const std::string& arg)
 {
 	using cli_config::argtype;
 
@@ -152,9 +152,11 @@ cli_config::argtype cliArgValidate(const std::string arg)
 	else if (arg == "f") {
 		return argtype::single;
 	}
-	// TODO: Implement verbose mode
 	// verbose mode
 	else if (arg == "v") {
+		return argtype::single;
+	}
+	else if (arg == "verbose") {
 		return argtype::single;
 	}
 	return argtype::unknown;
@@ -278,7 +280,12 @@ int main(int argc, char** argv)
 	// Get xbe's file path even if it's not given.
 	cli_config::GetValue(cli_config::filepath, &xbe_path);
 
-	XbSymbolDatabase_SetOutputVerbosity(XB_OUTPUT_MESSAGE_DEBUG);
+	xb_output_message xbsdb_output = XB_OUTPUT_MESSAGE_INFO;
+	if (cli_config::hasKey("v") || cli_config::hasKey("verbose")) {
+		xbsdb_output = XB_OUTPUT_MESSAGE_DEBUG;
+	}
+
+	XbSymbolDatabase_SetOutputVerbosity(xbsdb_output);
 	XbSymbolDatabase_SetOutputMessage(XbSDb_OutputMessage);
 	XbSDB_test_error = XbSymbolDatabase_TestOOVPAs();
 
