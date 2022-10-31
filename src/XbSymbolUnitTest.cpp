@@ -595,6 +595,7 @@ int main(int argc, char** argv)
 
 			if (local_error_count) {
 				XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_ERROR, "XbSymbolUnitTest: FAIL - " + std::to_string(local_error_count) + " errors; generated result does not match with cache file!");
+				error_count++;
 			}
 
 			// Check force overwrite argument exist
@@ -615,6 +616,10 @@ int main(int argc, char** argv)
 	test_ret = output_result_XbSDb();
 
 	XbSUT_OutputMessage<false>(XB_OUTPUT_MESSAGE_INFO, "Unit test end.");
+
+	if (error_count) {
+		pause_for_user_input();
+	}
 
 	return test_ret;
 }
