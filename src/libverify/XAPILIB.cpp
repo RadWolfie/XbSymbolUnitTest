@@ -122,7 +122,7 @@ static const library_list database_full = {
 	REGISTER_SYMBOL_INLINE_XAPI(timeSetEvent, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)),
 };
 
-static const library_list database_mu_optional = {
+static const library_list mu_optional = {
 
 	// derived xrefs
 	REGISTER_SYMBOL_INLINE(g_DeviceType_MU, VER_RANGE(0, VER_MAX, VER_NONE, VER_NONE)),
@@ -133,7 +133,7 @@ static const library_list database_mu_optional = {
 	REGISTER_SYMBOL_INLINE(XMUWriteNameToDriveLetter, VER_RANGE(3911, VER_MAX, VER_NONE, VER_NONE)), // So far is only found in dashboard
 };
 
-static const library_list database_mu_full = {
+static const library_list mu_full = {
 
 	// OOVPA sigs
 
@@ -173,14 +173,17 @@ static const subcategory_db xapilib_db = {
 
 static const subcategory_db mu_db = {
 	.name = "Memory Unit",
-	.optional = &database_mu_optional,
+	.optional = &mu_optional,
+	.min = nullptr,
+	.full = &mu_full,
+};
 	.min = nullptr, //&database_min,
 	.full = &database_mu_full,
 };
 
 void getLibraryXAPILIB(library_db& lib_db)
 {
-	lib_db.subcategories = { &xapilib_db , &mu_db };
+	lib_db.subcategories = { &xapilib_db, &mu_db };
 	lib_db.xref_offset = XREF_OFFSET;
 	lib_db.xref_total = LOCAL_COUNT;
 	lib_db.xref_exclude = 0;
