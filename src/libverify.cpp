@@ -187,9 +187,14 @@ bool match_library_db(std::map<uint32_t, symbol_result>& list,
 	}
 
 	if (found_size == 0) {
-		if (missing.empty() && !bOptional) {
-			// TODO: Check if any symbols are below title's build version.
-			XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, "Couldn't find any recognized symbols!");
+		// Force fail if symbols in subcategory doesn't exist in earlier XDK builds.
+		if (lib_db_size == 0) {
+			XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_INFO, "Symbols in subcategory does not exist.");
+			return false;
+		}
+		// Force fail since some subcategories doesn't exist until later XDK build revisions.
+		else if (missing.empty() && !bOptional) {
+			XbSUT_OutputMessage(XB_OUTPUT_MESSAGE_ERROR, "None of symbols are recognized!");
 			return false;
 		}
 	}
